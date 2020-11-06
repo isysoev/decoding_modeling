@@ -43,3 +43,5 @@ for word in shared_words:
 total_mass = sum(pg_freq.values())
 for pg in pg_freq.keys():
     pg_freq[pg] /= total_mass
+
+print(pg_freq)
