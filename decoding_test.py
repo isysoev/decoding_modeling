@@ -1,12 +1,9 @@
-###### DEBUGS AND CHECKS #######
-
-
 import math
 import pandas as pd
 from collections import defaultdict 
 import numpy as np
 
-from decoding import *
+import decoding
 
 from CandChunks import *
 from CandChunkInfo import *
@@ -260,7 +257,9 @@ def check_csv_chunks():
 def check_filter_length():
     
     #10/25: Words and pronunications directly from phonix.ipa
+    #This checks the split variant of the length filter
     this_case = {
+        'some': 's>s|ʌ1>o|m>me',
         'eat': 'i1>ea|t>t',
         'atom': 'æ1>a|t>t|ʌ0>o|m>m',
         'somewhat': 's>s|ʌ1>o|m>me|w>wh|ʌ1>a|t>t',
@@ -270,7 +269,7 @@ def check_filter_length():
     these_words = list(this_case.keys())
     this_case = {
         'Word': these_words,
-        'Frequency': [1, 3, 2, 4],
+        'Frequency': [5, 1, 3, 2, 4],
         'P': [this_case[this_word] for this_word in these_words]
         }
     
@@ -288,8 +287,151 @@ def check_filter_length():
     for post_chunk in filtered_chunks['post'].items():
         report += f'\n\t {post_chunk}'
         
-    print(report) 
     return report
+    
+def check_prefix_postfix_cuts():
+    """
+    Tests expected behavior for one run of prefix/postfix cuts.
+    """
+    
+    #The real application will need separate pre/postfix "memories"
+     
+    inputs = ['abe', 'abc', 'a', 'cab']
+    memory_set = {'abc', 'a', 'ab'}
+    memory_dict = {elem: {'P': -1} for elem in memory_set}
+    info_args = (memory_set, memory_dict)
+    #Just to avoid error for now, not yet testing pronunication reassembly.
+    
+    expected_prefix = ['e', '', '', None]
+    expected_postfix = [None, '', '', 'c']
+    
+    actual_prefix = [decoding._find_prefix_chunk(word, *info_args)\
+                     for word in inputs]
+    actual_postfix = [decoding._find_postfix_chunk(word, *info_args)\
+                     for word in inputs]
+        
+    actual_prefix = [pair[0] if pair is not None else None\
+                     for pair in actual_prefix ]
+    actual_postfix = [pair[0] if pair is not None else None\
+                      for pair in actual_postfix]
+
+    prefix_correct = expected_prefix == actual_prefix
+    postfix_correct = expected_postfix == actual_postfix
+    
+    assert prefix_correct and postfix_correct
+    
+def check_decoding_alt():
+    
+    """
+    Tests expected behavior for decoding alternating cuts function.
+    """
+    
+    #10/25: Words and pronunications directly from phonix.ipa
+    memory_set_prefix = {
+        's': 's',
+        'a': 'æ',
+        't': 't',
+        'wh': 'w'
+        }
+    
+    memory_set_suffix = {
+        'me':  'm',
+        'o':'ʌ',
+        'm': 'm'
+        }
+    
+    memory_set_prefix = {key: {'P': val} for key, val in memory_set_prefix.items()}
+    memory_set_suffix = {key: {'P': val} for key, val in memory_set_suffix.items()}
+    chunk_dict = {'pre': memory_set_prefix, 'post': memory_set_suffix}
+    chunk_set = {'pre': set(memory_set_prefix.keys()), 'post': set(memory_set_suffix.keys())}
+        
+    words_to_test = {
+        'some': 's>s|ʌ1>o|m>me', #Decode partial, fails on prefix (no o prefix grapheme)
+        'atom': 'æ1>a|t>t|ʌ0>o|m>m', #Decode complete
+        'what': 'w>wh|ʌ1>a|t>t', #Decode partial, fails on suffix (because t is not a postfix)
+        'apples': 'apples' #Completely fails on prefix
+        }
+    
+    expected_decodes = [None, 'ætʌm', None, None]
+    
+    actual_decodes = [decoding.decode_alt(word, chunk_set, chunk_dict) for word in words_to_test]
+
+    assert expected_decodes == actual_decodes
+
+def check_additional_reconstruction():
+    
+    """
+    Tests for expected IPA reconstruction behavior.
+    Multiple even terminates on prefix case is in (atom) for check_decoding_alt.
+    """
+    
+    mult_odd_term_suffix = ['ab', 'fg', 'c', 'e', 'd']
+    answer_mult = 'abcdefg'
+    
+    single = ['a']
+    answer_single = 'a'
+    
+    actual_mult = decoding._reconstruct_ipa_cuts(mult_odd_term_suffix)
+    actual_single = decoding._reconstruct_ipa_cuts(single)
+
+    assert actual_mult == answer_mult and actual_single == answer_single
+
+def check_find_sight_chunks():
+    
+    #10/25 and 11/1: Words and pronunications from phonix.ipa
+    words = {
+        'at': 'æ1>a|t>t',
+        'atom': 'æ1>a|t>t|ʌ0>o|m>m', 
+        'w': 'w>w',
+        'talked': 't>t|ɔ1>a|k>lk|t>ed',
+        'walked': 'w>w|ɔ1>a|k>lk|t>ed',
+        
+        }
+    #Case explanations:
+    #at and atom: Front is decodable: at should have 2 examples at least.
+    #talked and walked: Back is decodable: "alked" should have 2 examples at least.
+    #At, atom, talked are not fully decoable on being encountered.
+    #Walked will be fully decodable.
+    to_df = {'Word': list(words.keys()), 'P': list(words.values())}
+    scores = list(range(len(words)-1, -1, -1))
+    scores[-1] = 1
+    to_df['Frequency'] = scores
+    
+    df = pd.DataFrame.from_dict(to_df)
+    cand_chunks = decoding.candidate_chunks(df)
+    
+    cand_report = 'CandChunks:'
+    cand_report += '\npre'
+    for graph, info in cand_chunks['pre'].items():
+        cand_report += f'\n\t{graph}'
+        cand_report += f'\n\t\t{info}'
+        
+        
+    cand_report += '\npost'
+    for graph, info in cand_chunks['post'].items():
+        cand_report += f'\n\t{graph}'
+        cand_report += f'\n\t\t{info}'
+        
+    final_chunks = decoding.find_sight_chunks(cand_chunks)
+    
+    report = 'Decoding:'
+    report += '\npre'
+    for graph, info in final_chunks['pre'].items():
+        report += f'\n\t{graph}'
+        report += f'\n\t{info}'
+        
+        
+    report += '\npost'
+    for graph, info in final_chunks['post'].items():
+        report += f'\n\t{graph}'
+        report += f'\n\t{info}'
+        
+    print('Please see comment in code about pronunciation change for "was"'
+          ' for testing purposes'
+          ' (only changed manually in this code, not in the text file).')
+        
+    print()
+    print(report)
     
     
 ####### END INDIVIDUAL CHECKS #######
@@ -305,8 +447,8 @@ def check_code():
     """
     
     test_cases = [
-        check_chunks,
-        check_filter_examples
+        #check_chunks,
+        #check_filter_examples
         ]
     
     for test_case in test_cases:
@@ -317,5 +459,7 @@ def check_code():
 if __name__ == '__main__':
     #check_csv_chunks()
     #check_code()
-    check_filter_length()
+    #check_decoding_alt()
+    #check_additional_reconstruction()
+    check_find_sight_chunks()
         

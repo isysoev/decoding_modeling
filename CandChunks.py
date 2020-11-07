@@ -30,18 +30,13 @@ class CandChunks():
             
         return this_ipa
     
-    def add(self, this_chunk_list, df_word, is_prefix = None, is_postfix = None):
+    def add(self, this_chunk_list, df_word):
         """
         Inputs:
             this_chunk_list, a list of p/g pairs (prefix or suffix)
-                This will be a list version of the pronunication
+                This will be a list version of the pronunciation
                     in the dataset, split on |.
             df_word, the DataFrame entry for this chunk_list
-            is_prefix, is_postfix, Booleans.
-                default value None will not update the state of the CandChunkInfo.
-                Note that this behavior is because a given chunk
-                    can be a prefix, a postfix,
-                    both, or an entire word (and therefore a prefix and a postfix)
         """
         
         this_freq = df_word['Frequency']
@@ -59,14 +54,9 @@ class CandChunks():
         self.chunks[this_grapheme].add(this_phoneme,\
                                        this_freq, this_orig_word)
         
-        if is_prefix is not None and is_prefix:
-            self.chunks[this_grapheme].set_is_prefix()
-        if is_postfix is not None and is_postfix:
-            self.chunks[this_grapheme].set_is_postfix()
-        
     def give_argmax_pronunications(self):
         """
-        Returns the Dict: grapheme -> dict {pronunication, score}
+        Returns the Dict: grapheme -> dict {pronunciation, score}
             for max-scoring pronunications.
         """
         
@@ -74,6 +64,5 @@ class CandChunks():
         for this_word in self.chunks:
             this_word_info = self.chunks[this_word]
             final_chunks[this_word] = this_word_info.give_argmax_score()
-
+    
         return final_chunks
-  
