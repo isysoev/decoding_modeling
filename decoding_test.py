@@ -1,99 +1,19 @@
 ###### DEBUGS AND CHECKS #######
+
+
+import math
+import pandas as pd
+from collections import defaultdict 
+import numpy as np
+
 from decoding import *
+
+from CandChunks import *
+from CandChunkInfo import *
+from decoding_test_cases import *
+
 import os
 
-####### TEST CASE DATA CREATION ####### 
-
-
-def _make_filter_test_case():
-    
-    """
-    Returns Lists of Dicts, input and output for filter test case.
-    """
-    
-    chunk_struct_data_vals = [
-        
-        {'P1':{ #Select examples in an excess of examples
-            'score': 1,
-            'examples':  {'i1no': 1, 'i1yes1': 100, 'i1yes2': 1000}
-            }},
-        
-        {'P2':{#Select entire set
-              'score': 2,
-              'examples': {'i2yes1': 2, 'i2yes2': 200}
-              }},
-        
-       {'P3':{#Less examples than max to filter available.
-            'score': 3,
-            'examples': {'i3yes': -3000} 
-            }}
-
-        ]
-    
-    expected_data_vals = [
-        
-        {#Select examples in an excess of examples
-         'P': 'P1',
-         'score': 1,
-         'examples':  {'i1yes1': 100, 'i1yes2': 1000}
-            },
-        
-        {#Select entire set
-         'P': 'P2',
-         'score': 2,
-         'examples': {'i2yes1': 2, 'i2yes2': 200},
-              },
-        
-        {#Less examples than max to filter available.
-         'P': 'P3',
-         'score': 3,
-         'examples': {'i3yes': -3000} 
-            }
-
-        ]
-    
-    return chunk_struct_data_vals, expected_data_vals
-         
-def _make_chunk_case(save_path = ''):
-    
-    #Words and the pronunications are from the original data.
-    debug_dict = {
-        'Unnamed': [1, 2, 3, 9, 8, 7, 4],
-        'Word': ['the', 'there', 'herself', 'her', 'more', 'under', 'fer'],
-        'Frequency': [1, 1.5, 2 , 0.5, 0.3, 1.1, 0.7],
-        'P': ['ð>th|i1>e', 'ð>th|ɛ1>e|r>re', \
-              'h>h|ɝ0>er|s>s|ɛ1>e|l>l|f>f', 'h>h|ɝ1>er', \
-                  'm>m|ɔ1>o|r>re',\
-                      'ʌ1>u|n>n|d>d|ɝ0>er',\
-                          'f>f|ɝ1>er'],
-        'P1': [math.nan]*7 #['hi'] + [math.nan]*6
-        #10/4: https://stackoverflow.com/questions/43638759/python-how-to-get-nan
-        }
-    debug_df = pd.DataFrame.from_dict(debug_dict)
-    
-    if save_path:
-        debug_df.to_csv(save_path)
-        
-    return debug_df
-
-def _make_manual_chunk_answer():
-    """
-    Return value (a Dict) for use as manual_case
-        in check_final_chunks_test_case.
-    """
-    
-    return {
-       
-       'th':2.5, 'e':1,
-       'the':1.5, 'ere':1.5, 're':1.8,
-       'h':2.5,
-       'hers':2, 'herse':2, 'hersel':2, 'elf':2, 'self':2, 'lf':2,
-       'er':2.3,
-       'm':0.3,'mo':0.3,'ore':0.3,
-       'u':1.1, 'un':1.1, 'und':1.1, 'nder':1.1, 'der':1.1,
-       'f':2.7
-   
-       }
 
 ######### VERIFICATION OF CHUNK CODE VERIFICATION  #########
 
@@ -273,13 +193,17 @@ def _compare_final_chunks_test_case(manual_case, computed_case, \
 ###### CALLABLE CHECK FUNCTIONS ###### 
         
 
-def check_filter_examples():
+def check_filter_examples(analysis=False):
     """
     Checks if the filter code functions as expected
         according to the constructed test case.
     Returns nothing, but will fail assertion
         and print report if unexpected behavior.
     """
+    
+    if analysis:
+        global print_info
+        print_info = []
     
     this_num_examples = 2
     chunk_struct_data_vals, expected_data_vals = _make_filter_test_case()
@@ -320,8 +244,7 @@ def check_chunks(full_report = False):
     
     _compare_final_chunks_test_case(manual_case, final_chunks,\
                                    full_report)
-        
-        
+         
 def check_csv_chunks():
     
     parent_dir = '../Data/'
@@ -333,6 +256,41 @@ def check_csv_chunks():
 
     final_df = gen_save_chunks(input_path, output_path)
     reload_df = pd.read_csv(output_path)
+    
+def check_filter_length():
+    
+    #10/25: Words and pronunications directly from phonix.ipa
+    this_case = {
+        'eat': 'i1>ea|t>t',
+        'atom': 'æ1>a|t>t|ʌ0>o|m>m',
+        'somewhat': 's>s|ʌ1>o|m>me|w>wh|ʌ1>a|t>t',
+        'what': 'w>wh|ʌ1>a|t>t' 
+        }
+    
+    these_words = list(this_case.keys())
+    this_case = {
+        'Word': these_words,
+        'Frequency': [1, 3, 2, 4],
+        'P': [this_case[this_word] for this_word in these_words]
+        }
+    
+    #Declare a CandChunk chunks dictionary directly? 
+    this_df = pd.DataFrame.from_dict(this_case)
+    filtered_chunks = candidate_chunks(this_df)
+    
+    print('Requires manual verification. Please see output.')
+    
+    report = 'Prefixes'
+    for pre_chunk in filtered_chunks['pre'].items():
+        report += f'\n\t {pre_chunk}'
+    
+    report += '\n\nPostfixes'
+    for post_chunk in filtered_chunks['post'].items():
+        report += f'\n\t {post_chunk}'
+        
+    print(report) 
+    return report
+    
     
 ####### END INDIVIDUAL CHECKS #######
 
@@ -357,5 +315,7 @@ def check_code():
     return True
 
 if __name__ == '__main__':
-    check_csv_chunks()
+    #check_csv_chunks()
+    #check_code()
+    check_filter_length()
         

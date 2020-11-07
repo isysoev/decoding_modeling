@@ -4,14 +4,11 @@ import pandas as pd
 import math
 import numpy as np
 
-from collections import defaultdict
-
-#My own debugging import
-import decoding_test
+from collections import defaultdict 
 
 """
-Major changes since last decoding version:
-    - added def set_is_pre_postfix and added lines to use this in candchunk generation.
+Version split from original decoding code at 9:50 pm on 10/24.
+Used to investigate behavior of unintuitive behavior of "at" in the OrderedDict CSV.
 """
 
 ####### GENERATE CANDIDATES #######
@@ -24,15 +21,10 @@ class CandChunkInfo():
         for each chunk.
     """
     
-    prefix_opts = {'pre', 'post', 'full'}
-    
     def __init__(self, num_examples):
         self.data = {}
         self.seen = set()
         self.num_examples = num_examples
-        self.is_prefix = False
-        self.is_postfix = False
-        
         #Above:
         #   Keys (IPA pronunication, String)
         #   Values: Dict, with the following key-values:
@@ -40,44 +32,15 @@ class CandChunkInfo():
         #       'examples': List of 5 most frequent words
         #           with this chunk: (grapheme, score).
             
-    def set_is_prefix(self):
-        """
-        Either this or set_is_postfix must be used
-            if length-based filtering is being used.
-        For entire words, is_prefix and is_postfix is True.
-        """
-        
-        self.is_prefix = True
-    
-    def set_is_postfix(self):
-        """
-        See comment on set_is_prefix
-        """
-        self.is_postfix = True
-        
-    def get_is_prefix(self):
-        return self.is_prefix 
-    
-    def get_is_postfix(self):
-        return self.is_postfix
-    
-        
     def __str__(self):
         
         if not self.data: #If empty
             return {}
         
-        report = "\n\tDescribes: "
-        if self.is_prefix:
-            report += 'prefix'
-            if self.is_postfix:
-                report += ', '
-        if self.is_postfix:
-            report += 'postfix'
-            
+        report = ""
         for ipa in self.data:
             this_info = self.data[ipa]
-            report += '\tFor IPA: {}\n'.format(ipa)
+            report += '\n\tFor IPA: {}\n'.format(ipa)
             report += '\t\tScore: {}\n'.format(this_info['score'])
             report += '\t\tExamples: {}\n\n'.format(this_info['examples'])
             
@@ -191,18 +154,13 @@ class CandChunks():
             
         return this_ipa
     
-    def add(self, this_chunk_list, df_word, is_prefix = None, is_postfix = None):
+    def add(self, this_chunk_list, df_word):
         """
         Inputs:
             this_chunk_list, a list of p/g pairs (prefix or suffix)
                 This will be a list version of the pronunication
                     in the dataset, split on |.
             df_word, the DataFrame entry for this chunk_list
-            is_prefix, is_postfix, Booleans.
-                default value None will not update the state of the CandChunkInfo.
-                Note that this behavior is because a given chunk
-                    can be a prefix, a postfix,
-                    both, or an entire word (and therefore a prefix and a postfix)
         """
         
         this_freq = df_word['Frequency']
@@ -219,11 +177,6 @@ class CandChunks():
         #Either add or update information.
         self.chunks[this_grapheme].add(this_phoneme,\
                                        this_freq, this_orig_word)
-        
-        if is_prefix is not None and is_prefix:
-            self.chunks[this_grapheme].set_is_prefix()
-        if is_postfix is not None and is_postfix:
-            self.chunks[this_grapheme].set_is_postfix()
         
     def give_argmax_pronunications(self):
         """
@@ -259,16 +212,12 @@ def _update_word_candidate_chunks(df_word, cand_chunks):
         #Note that this stops one end idx short of the full word
         #   But that full word is covered in the suffix
         prefix_list = info[:end_idx]
-        cand_chunks.add(prefix_list, df_word, is_prefix = True)
+        cand_chunks.add(prefix_list, df_word)
     
     for start_idx in range(len(info)):
             
         suffix_list = info[start_idx:]
-        if start_idx == 0: #Mark entire words as prefix and postfix
-            cand_chunks.add(suffix_list, df_word,\
-                            is_prefix = True, is_postfix = True)
-        else:
-            cand_chunks.add(suffix_list, df_word, is_postfix = True)
+        cand_chunks.add(suffix_list, df_word)
 
 def candidate_chunks(data_df):
     """
@@ -295,7 +244,6 @@ def candidate_chunks(data_df):
     for i in range(len(data_df)):
         _update_word_candidate_chunks(data_df.iloc[i], cand_chunks)
     
-    print(cand_chunks)
     final_chunks = cand_chunks.give_argmax_pronunications()
     return final_chunks
 
@@ -495,7 +443,7 @@ def create_chunks_df(final_chunks_dict, save_path = ''):
         if os.path.exists(this_dir):
             final_chunk_df.to_csv(save_path)
             wrote_success = True
-    if not wrote_success and save_path:
+    if not wrote_success:
         print('The path {} did not exist.'.format(save_path))
         print('The function will return the DataFrame '+\
                   'and save to current directory.') 
@@ -528,7 +476,7 @@ def check_if_all_nan(data_df):
 
 ####### END ASSUMPTION CHECK #######
 
-def gen_save_chunks(data_path, save_path):
+def gen_save_chunks(data_path, save_path, to_save = True):
     """
     The function to call to generate and save the final chunks.
     Inputs:
@@ -544,6 +492,8 @@ def gen_save_chunks(data_path, save_path):
                 with this chunk (String),
                     Formatted according to _gen_example_string.
     """
+    
+    print('Will {}attempt to save the output.'.format('not ' if not to_save else ''))
     
     data_df = pd.read_csv(data_path)
         
@@ -561,8 +511,7 @@ def gen_save_chunks(data_path, save_path):
     
     #Backup if file not saved correctly first time -- 
     #   just save the output somewhere to avoid rerunning entire program.
-    
-    if not successfully_wrote and save_path:
+    if to_save and not successfully_wrote and save_path:
         save_path = './popular_words_chunks.csv'
         if os.path.exists(save_path):
             print('Overwriting the file at this location.')
@@ -572,18 +521,137 @@ def gen_save_chunks(data_path, save_path):
     
     return chunk_df
 
+def extract_relevant_info_at(data_path):
+    """
+    The code from candidate_chunks, repurposed to investigate the "at" behavior.
+    Essentially, filtering on the pronunications was removed.
+    
+    TODO: remove filtering on the example words.
+    """
+    
+    data_df = pd.read_csv(data_path)
+    
+    cand_chunks = CandChunks()
+    for i in range(len(data_df)):
+        _update_word_candidate_chunks(data_df.iloc[i], cand_chunks)
+    
+    final_chunks = cand_chunks#.give_argmax_pronunications()
+    
+    return final_chunks
+    
+ 
+def _sum_score_examples(cand_info, cand_info_key):
+    
+    total_sum_pronunication = sum(score for score\
+                                  in cand_info.data[cand_info_key]['examples'].values())
+    
+    return total_sum_pronunication
+
+
+def _print_at_info():
+    cand_chunks = extract_relevant_info_at(DATA_PATH)
+    
+    at_info = cand_chunks.chunks['at']
+    check_phoneme = ['ʌt', 'æt']
+    
+    for this_p in check_phoneme:
+        summed_score = _sum_score_examples(at_info, this_p)
+        print(this_p, summed_score)
+
+  
+def _check_correspondence_present(this_ipa, to_find_ph):
+    #Doctest reference: 10/23
+    #https://docs.python.org/3/library/doctest.html
+    """
+    >>> _check_correspondence_present('s>s|æ2>a|t>t|ɪ0>i|s>s|f>f|æ1>a|k>c|ʃ>ti|ʌ0>o|n>n', 'ʌ')
+    False
+    >>> _check_correspondence_present('s>s|æ2>a|t>t|ɪ0>i|s>s|f>f|æ1>a|k>c|ʃ>ti|ʌ0>o|n>n', 'ʌ')
+    True
+    """
+    #10/23: The IPA from above is taken directly from popular words CSV
+    #   (which is from phonix.ipa) 
+    return any(f"{to_find_ph}{stress}>a|t>t" in this_ipa for stress in [0, 1, ''])
+    
 if __name__ == '__main__':
-    #I broke the 'main' name above to prevent accidental re-runs
     
-    DATA_PATH = '../Data/debug_words.csv' #'../Data/popular_words.csv'
-    RESULT_PATH = '../Data/debug_words_chunks_length_filter.csv'
-    #result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH)
-    result_chunks_df = gen_save_chunks(DATA_PATH, '') #Don't save yet.
+    #Doctest reference: 10/23
+    #https://docs.python.org/3/library/doctest.html
+    import doctest
+    doctest.testmod()
+
+
+    DATA_PATH = '../Data/popular_words.csv'
+    RESULT_PATH = None
+    #result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH, to_save = False)
     
-    print(result_chunks_df)
+    data_df = pd.read_csv(DATA_PATH)
     
-    #print('Chunks generated and saved. Complete.')
-    print('Chunks generated. Complete.')
+    filter_idx_at = [idx for idx, word\
+                     in enumerate(data_df['Word'])\
+                         if 'at' in word]
+        
+    #10/23: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.filter.html#pandas.DataFrame.filter
+    which_items = data_df.filter(items = filter_idx_at, axis = 0)
+    #10/23: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
+    which_items = which_items.sort_values(by = ['Frequency'],\
+                                          ascending = False)
+    #Parse the different between the different pronunications of at.
+    
+    #From the CandChunks Info ʌ, æt are the two contenders for "at"
+    U_ph =  'ʌ'
+    A_ph = 'æ'
+    
+    sum_scores = defaultdict(int)
+    u_list = []; a_list = []; both_list = []
+    
+    print(which_items['P'])
+    #The issue is that IPA have already been joined together.
+    #This could be a problem!
+    
+    case  = 's>s|æ2>a|t>t|ɪ0>i|s>s|f>f|æ1>a|k>c|ʃ>ti|ʌ0>o|n>n'
+    
+    print(_check_correspondence_present(case, A_ph))
+    
+    for this_word, this_ipa, this_freq in zip(which_items['Word'],\
+                                              which_items['P'],\
+                                              which_items['Frequency']):
+        
+        has_u = _check_correspondence_present(this_ipa, U_ph)
+        has_a = _check_correspondence_present(this_ipa, A_ph) 
+
+        if not (has_u or has_a):
+            continue
+        
+        if has_u:
+            sum_scores[U_ph] += this_freq
+            u_list.append((this_word, this_freq))
+        if has_a:
+            sum_scores[A_ph] += this_freq
+            a_list.append((this_word, this_freq))
+        if has_u and has_a:
+            sum_scores['both'] += this_freq
+            
+    both_list = list(set(word for word, _ in u_list)\
+                     & set(word for word, _ in a_list))
+    
+    
+    
+    print('U', sum_scores[U_ph])
+    for word, score in u_list[:10]:
+        print(word, score)
+        
+    print(); print()
+        
+    print('A', sum_scores[A_ph])
+    for word, score in a_list[:10]:
+        print(word, score)
+        
+    print(sum_scores['both'], both_list)
+    
+    
+            
+            
+        
     
     
     

@@ -1,18 +1,19 @@
+#Used to output the intermediate evaluation version
+#of the first iteration of decoding chunks
+
+#10/17 OrderedDict syntax: https://www.geeksforgeeks.org/ordereddict-in-python/
+#10/17 Some OrderedDict advice: http://gandenberger.org/2018/03/10/ordered-dicts-vs-ordereddict/
+
 import os
 import pandas as pd
 
 import math
 import numpy as np
 
-from collections import defaultdict
+from collections import OrderedDict
 
 #My own debugging import
 import decoding_test
-
-"""
-Major changes since last decoding version:
-    - added def set_is_pre_postfix and added lines to use this in candchunk generation.
-"""
 
 ####### GENERATE CANDIDATES #######
 
@@ -24,15 +25,10 @@ class CandChunkInfo():
         for each chunk.
     """
     
-    prefix_opts = {'pre', 'post', 'full'}
-    
     def __init__(self, num_examples):
-        self.data = {}
+        self.data = OrderedDict()
         self.seen = set()
         self.num_examples = num_examples
-        self.is_prefix = False
-        self.is_postfix = False
-        
         #Above:
         #   Keys (IPA pronunication, String)
         #   Values: Dict, with the following key-values:
@@ -40,44 +36,15 @@ class CandChunkInfo():
         #       'examples': List of 5 most frequent words
         #           with this chunk: (grapheme, score).
             
-    def set_is_prefix(self):
-        """
-        Either this or set_is_postfix must be used
-            if length-based filtering is being used.
-        For entire words, is_prefix and is_postfix is True.
-        """
-        
-        self.is_prefix = True
-    
-    def set_is_postfix(self):
-        """
-        See comment on set_is_prefix
-        """
-        self.is_postfix = True
-        
-    def get_is_prefix(self):
-        return self.is_prefix 
-    
-    def get_is_postfix(self):
-        return self.is_postfix
-    
-        
     def __str__(self):
         
         if not self.data: #If empty
-            return {}
+            return OrderedDict()
         
-        report = "\n\tDescribes: "
-        if self.is_prefix:
-            report += 'prefix'
-            if self.is_postfix:
-                report += ', '
-        if self.is_postfix:
-            report += 'postfix'
-            
+        report = ""
         for ipa in self.data:
             this_info = self.data[ipa]
-            report += '\tFor IPA: {}\n'.format(ipa)
+            report += '\n\tFor IPA: {}\n'.format(ipa)
             report += '\t\tScore: {}\n'.format(this_info['score'])
             report += '\t\tExamples: {}\n\n'.format(this_info['examples'])
             
@@ -105,11 +72,15 @@ class CandChunkInfo():
                 curr_dict['examples'][new_orig_word] += new_freq
                 
         else:
-            self.data[new_ipa] = {
-                'score': new_freq,
-                'examples': {new_orig_word: new_freq},
-                'seen_examples': set()
-                }
+            self.data[new_ipa] = OrderedDict()
+            
+            for key, val in zip(['score', 'seen_examples'],\
+                                [new_freq, set()]):
+                self.data[new_ipa][key] = val
+                
+            word_freq_pair = OrderedDict(); word_freq_pair[new_orig_word] = new_freq
+            self.data[new_ipa]['examples'] = word_freq_pair
+                
         self.seen.add(new_ipa) 
         self.data[new_ipa]['seen_examples'].add(new_orig_word)
         
@@ -130,8 +101,9 @@ class CandChunkInfo():
         which_examples = ordered_keys[:actual_num_ex]
         
         #Transfer example and its score to new Dictionary.
-        new_dict = {this_word: this_example_dict[this_word] \
-                    for this_word in which_examples}
+        new_dict = OrderedDict()
+        for this_word in which_examples:
+            new_dict[this_word] = this_example_dict[this_word]
         
         return new_dict
 
@@ -156,20 +128,21 @@ class CandChunkInfo():
         raw_examples = self.data[argmax_ipa]['examples']
         filtered_examples = self.select_max_score_examples(raw_examples)
         
-        max_ipa_info = {'P': argmax_ipa, 'score': max_score,
-                        'examples': filtered_examples}
+        max_ipa_info = OrderedDict()
+        for key, value in zip(['P', 'score', 'examples'], (argmax_ipa, max_score, filtered_examples)):
+            max_ipa_info[key] = value
         
         self.data = None #Clear memory, as this will no longer be used.
         return max_ipa_info
      
 class CandChunks():
     
+    def _create_specific_info(self):
+            return CandChunkInfo(self.num_examples)
+    
     def __init__(self, num_examples=5):
-        
-        def _create_specific_info():
-            return CandChunkInfo(num_examples)
-        
-        self.chunks = defaultdict(_create_specific_info)
+        self.chunks = OrderedDict()
+        self.num_examples = num_examples
         
     def __str__(self):
         report = ""
@@ -191,18 +164,13 @@ class CandChunks():
             
         return this_ipa
     
-    def add(self, this_chunk_list, df_word, is_prefix = None, is_postfix = None):
+    def add(self, this_chunk_list, df_word):
         """
         Inputs:
             this_chunk_list, a list of p/g pairs (prefix or suffix)
                 This will be a list version of the pronunication
                     in the dataset, split on |.
             df_word, the DataFrame entry for this chunk_list
-            is_prefix, is_postfix, Booleans.
-                default value None will not update the state of the CandChunkInfo.
-                Note that this behavior is because a given chunk
-                    can be a prefix, a postfix,
-                    both, or an entire word (and therefore a prefix and a postfix)
         """
         
         this_freq = df_word['Frequency']
@@ -217,13 +185,11 @@ class CandChunks():
         this_phoneme = self.clean_ipa(this_phoneme)
     
         #Either add or update information.
+        if this_grapheme not in self.chunks:
+            self.chunks[this_grapheme] = self._create_specific_info()
+            
         self.chunks[this_grapheme].add(this_phoneme,\
                                        this_freq, this_orig_word)
-        
-        if is_prefix is not None and is_prefix:
-            self.chunks[this_grapheme].set_is_prefix()
-        if is_postfix is not None and is_postfix:
-            self.chunks[this_grapheme].set_is_postfix()
         
     def give_argmax_pronunications(self):
         """
@@ -231,7 +197,7 @@ class CandChunks():
             for max-scoring pronunications.
         """
         
-        final_chunks = {}
+        final_chunks = OrderedDict()
         for this_word in self.chunks:
             this_word_info = self.chunks[this_word]
             final_chunks[this_word] = this_word_info.give_argmax_score()
@@ -259,16 +225,12 @@ def _update_word_candidate_chunks(df_word, cand_chunks):
         #Note that this stops one end idx short of the full word
         #   But that full word is covered in the suffix
         prefix_list = info[:end_idx]
-        cand_chunks.add(prefix_list, df_word, is_prefix = True)
+        cand_chunks.add(prefix_list, df_word)
     
     for start_idx in range(len(info)):
             
         suffix_list = info[start_idx:]
-        if start_idx == 0: #Mark entire words as prefix and postfix
-            cand_chunks.add(suffix_list, df_word,\
-                            is_prefix = True, is_postfix = True)
-        else:
-            cand_chunks.add(suffix_list, df_word, is_postfix = True)
+        cand_chunks.add(suffix_list, df_word)
 
 def candidate_chunks(data_df):
     """
@@ -295,7 +257,6 @@ def candidate_chunks(data_df):
     for i in range(len(data_df)):
         _update_word_candidate_chunks(data_df.iloc[i], cand_chunks)
     
-    print(cand_chunks)
     final_chunks = cand_chunks.give_argmax_pronunications()
     return final_chunks
 
@@ -332,17 +293,45 @@ def _find_prefix_chunk(start_idx, cand_chunk, curr_chunk_set, curr_chunk_dict):
     
     
     
-def is_regular(cand_graph, cand_ipa, true_chunk_set, true_chunk_dict):
+def is_regular(cand_graph, cand_ipa, cand_examples,\
+               true_chunk_set, true_chunk_dict, score):
     """
     Inputs: cand_graph, the grapheme to be considered (String)
             cand_ipa, the pronunication of above.
+            cand_examples, the corresponding word examples.
+                (Different from main code!)
             true_chunk_set, the Set of currently chosen sight chunks
             true_chunk_dict, the dictionary of the current
                 list of sight chunks.
+            score (not in the non-analysis version of the code)
+                a number, the score of the chunk
     Outputs: a Boolean, whether the sight chunk is
         explainable by current chunks.
     """
     
+    def _record_irregularity(decoded_ipa):
+        """
+        Records newly memorized chunk for saving in 10/17 analysis.
+        decoded_ipa must be passed separately due to
+            problems with declaration in case of "not attempted"
+        """
+        global print_info
+        
+        #print('\tChunk: {}'.format(cand_graph))
+        #print('\t\tDecoded IPA: {}'.format(decoded_ipa))
+        #print('\t\tActual IPA: {}'.format(cand_ipa))
+        #print('\t\tScore IPA: {}'.format(score))
+        
+        this_print_info_dict = OrderedDict()
+        this_print_info_dict['Grapheme'] = cand_graph
+        this_print_info_dict['Decoded P'] = decoded_ipa
+        this_print_info_dict['Actual P'] = cand_ipa
+        this_print_info_dict['score'] = score
+        this_print_info_dict['Examples'] =\
+            _format_examples({'examples': cand_examples})
+        
+        print_info.append(this_print_info_dict)
+        
     #While word not completely decoded
     decoded_ipa_list = []
     curr_start_idx = 0 #Where to start decoding at.
@@ -355,6 +344,8 @@ def is_regular(cand_graph, cand_ipa, true_chunk_set, true_chunk_dict):
                                         true_chunk_dict)
             
         if result is None:
+            #print('Next word failed to be decoded.')
+            _record_irregularity('not attempted')
             return False #Contains no prefix that can be found in the set
             #   Therefore can't be decoded.
         
@@ -363,7 +354,14 @@ def is_regular(cand_graph, cand_ipa, true_chunk_set, true_chunk_dict):
     
     decoded_ipa = ''.join(decoded_ipa_list)
     
-    return decoded_ipa == cand_ipa
+    decoding_success = decoded_ipa == cand_ipa
+    
+    if not decoding_success: #A new chunk will shortly be added!
+        #Note the chunk here, because the cand_ipa is available.
+        #print('Next word was attempted to be decoded.')
+        _record_irregularity(decoded_ipa)
+        
+    return decoding_success
     
 def find_sight_chunks(cand_chunks):
     """
@@ -377,7 +375,7 @@ def find_sight_chunks(cand_chunks):
                 'examples': List of [words with this sight chunk]
                 'score': Given by the candidate chunk info.
     """
-    true_chunks_dict = {}
+    true_chunks_dict = OrderedDict()
     true_chunks_set = set()
     
     #Sort the candidate chunks by size.
@@ -392,16 +390,18 @@ def find_sight_chunks(cand_chunks):
         
         this_ipa = this_chunk['P']
         this_score = this_chunk['score']
+        this_examples = this_chunk['examples']
         
-        if not is_regular(this_chunk_graph, this_ipa,\
-                   true_chunks_set, true_chunks_dict):
+        if not is_regular(this_chunk_graph, this_ipa, this_examples, \
+                   true_chunks_set, true_chunks_dict, this_score):
             
+            #print(this_chunk_graph, 'is irregular')
             true_chunks_set.add(this_chunk_graph)
-            true_chunks_dict[this_chunk_graph] = {
-                'P': this_ipa,
-                'score': this_score,
-                'examples': this_chunk['examples']
-                }
+            true_chunks_dict[this_chunk_graph] = OrderedDict()
+            
+            for key, val in zip(['P', 'score', 'examples'],\
+                                [this_ipa, this_score, this_chunk['examples']]):
+                true_chunks_dict[this_chunk_graph][key] = val 
             
     return true_chunks_dict #Convert ordering later.
 
@@ -425,11 +425,20 @@ def _format_examples(this_chunk_dict):
     
     orig_example_dict = this_chunk_dict['examples']
     #10/11: https://docs.python.org/3/howto/sorting.html
-    order_words = sorted(list(orig_example_dict.keys()), reverse = True)
+    
+    orig_example_tuples = [(word, score) for word, score\
+                           in orig_example_dict.items()]
+        
+    scores_only = [score for _, score in orig_example_tuples]
+    
+    order_idxs = np.argsort(scores_only).tolist()
+    order_idxs.reverse()
+    
+    #print([orig_example_tuples[i] for i in order_idxs[:min(len(order_idxs), 3)]])
     
     new_example_list = []
-    for this_word in order_words:
-        this_word_score = orig_example_dict[this_word]
+    for order_idx in order_idxs:
+        this_word, this_word_score = orig_example_tuples[order_idx]
         this_example_str = '{}>{}'.format(this_word, this_word_score)
         new_example_list.append(this_example_str)
     
@@ -458,7 +467,9 @@ def create_chunks_df(final_chunks_dict, save_path = ''):
     #   https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.append.html
     
     list_keys = ['G', 'P', 'score', 'examples']
-    list_cols = { key: [] for key in list_keys}
+    list_cols = OrderedDict()
+    for key in list_keys:
+        list_cols[key] = []
     
     def _update_list_one_chunk(grapheme, this_chunk_dict):
         """
@@ -495,7 +506,7 @@ def create_chunks_df(final_chunks_dict, save_path = ''):
         if os.path.exists(this_dir):
             final_chunk_df.to_csv(save_path)
             wrote_success = True
-    if not wrote_success and save_path:
+    if not wrote_success:
         print('The path {} did not exist.'.format(save_path))
         print('The function will return the DataFrame '+\
                   'and save to current directory.') 
@@ -572,18 +583,65 @@ def gen_save_chunks(data_path, save_path):
     
     return chunk_df
 
-if __name__ == '__main__':
+def save_chunks_analysis_1017():
+    """
+    The algorithm evaluation method requested around 10/17/20.
+    This will save the chunks with their faulty proposed decoding,
+        as well as their actual pronunications,
+        before they were memorized as chunks.
+    _added_order filename == saved in the order of their adding to the chunks list.
+    _score_order filename == saved in the order of their scores, descending.
+    
+    """
+    
+    global print_info
+    print_info = []
+    
+    #Above: Will store the following
+    #The chunk that was added, in the order the algorithm accepted it
+    #The pronunication that the algorithm had proposed for this chunk
+    #The actual pronunication.
+    
+    #Later, the entire csv will be resaved in the frequency sorted order as well.
+    
+    DATA_PATH = '../Data/popular_words.csv' #'../Data/debug_words.csv' 
+    RESULT_PATH = '../Data/Self_Analysis/popular_words_chunks_ignore.csv'
+    ANALYSIS_RESULT_PATH = '../Data/Self_Analysis/popular_words_chunks_1017_analysis'
+     
+    assert RESULT_PATH != '../Data/popular_words_chunks.csv',\
+        'Attempted to overwrite main chunks file! Terminated, did not re-save.'
+    
+    result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH) #This will re-save the analysis elsewhere
+    
+    #Now, save the print_info information
+    
+    #10/17: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.from_records.html
+    print_info_df = pd.DataFrame.from_records(print_info)
+    #This is in order that the chunk was added, 
+    #   because of OrderedDict (and dicts in this version of Python in general)
+    
+    print_info_df.to_csv(ANALYSIS_RESULT_PATH+'_added_order.csv')
+    
+    #10/17: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.sort_values.html
+    print_info_df = print_info_df.sort_values('score', ascending = False)
+    
+    print_info_df.to_csv(ANALYSIS_RESULT_PATH+'_score_order.csv')
+    
+    os.remove(RESULT_PATH) #To avoid confusion
+
+if __name__ == '__generate-main__':
     #I broke the 'main' name above to prevent accidental re-runs
     
-    DATA_PATH = '../Data/debug_words.csv' #'../Data/popular_words.csv'
-    RESULT_PATH = '../Data/debug_words_chunks_length_filter.csv'
-    #result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH)
-    result_chunks_df = gen_save_chunks(DATA_PATH, '') #Don't save yet.
+    DATA_PATH = '../Data/popular_words.csv'
+    RESULT_PATH = '../Data/popular_words_chunks.csv'
     
-    print(result_chunks_df)
+    result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH)
     
-    #print('Chunks generated and saved. Complete.')
-    print('Chunks generated. Complete.')
+    print('Chunks generated and saved. Complete.') 
+    
+if __name__ == '__main__':
+
+    save_chunks_analysis_1017()
     
     
     

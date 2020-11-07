@@ -4,7 +4,10 @@ import pandas as pd
 import math
 import numpy as np
 
-from collections import defaultdict 
+from collections import defaultdict
+
+#My own debugging import
+import decoding_test
 
 ####### GENERATE CANDIDATES #######
 
@@ -354,8 +357,8 @@ def find_sight_chunks(cand_chunks):
 def _format_examples(this_chunk_dict):
     
     """
-    Format the examples into one String,
-       with high frequency words appearing first.
+    Format the exampels into one String,
+       with words with high scores appearing first.
     Inputs:
         an element (nested Dict) of the output of find_sight_chunks,
             representing a single chunk. 
@@ -367,20 +370,12 @@ def _format_examples(this_chunk_dict):
     """
     
     orig_example_dict = this_chunk_dict['examples']
-    
-    orig_example_tuples = [(word, score) for word, score\
-                           in orig_example_dict.items()]
-        
-    scores_only = [score for _, score in orig_example_tuples]
-    order_idxs = np.argsort(scores_only).tolist()
-    order_idxs.reverse()
-    
     #10/11: https://docs.python.org/3/howto/sorting.html
     order_words = sorted(list(orig_example_dict.keys()), reverse = True)
     
     new_example_list = []
-    for order_idx in order_idxs:
-        this_word, this_word_score = orig_example_tuples[order_idx]
+    for this_word in order_words:
+        this_word_score = orig_example_dict[this_word]
         this_example_str = '{}>{}'.format(this_word, this_word_score)
         new_example_list.append(this_example_str)
     
@@ -479,7 +474,7 @@ def check_if_all_nan(data_df):
 
 ####### END ASSUMPTION CHECK #######
 
-def gen_save_chunks(data_path, save_path, to_save = True):
+def gen_save_chunks(data_path, save_path):
     """
     The function to call to generate and save the final chunks.
     Inputs:
@@ -495,8 +490,6 @@ def gen_save_chunks(data_path, save_path, to_save = True):
                 with this chunk (String),
                     Formatted according to _gen_example_string.
     """
-    
-    print('Will {}attempt to save the output.'.format('not ' if not to_save else ''))
     
     data_df = pd.read_csv(data_path)
         
@@ -514,7 +507,8 @@ def gen_save_chunks(data_path, save_path, to_save = True):
     
     #Backup if file not saved correctly first time -- 
     #   just save the output somewhere to avoid rerunning entire program.
-    if to_save and not successfully_wrote and save_path:
+    
+    if not successfully_wrote and save_path:
         save_path = './popular_words_chunks.csv'
         if os.path.exists(save_path):
             print('Overwriting the file at this location.')
@@ -524,7 +518,7 @@ def gen_save_chunks(data_path, save_path, to_save = True):
     
     return chunk_df
 
-if __name__ == '__main__':
+if __name__ == '__generate-main__':
     #I broke the 'main' name above to prevent accidental re-runs
     
     DATA_PATH = '../Data/popular_words.csv'
@@ -533,12 +527,8 @@ if __name__ == '__main__':
     
     print('Chunks generated and saved. Complete.')
     
-if __name__ == '__gmain__':
-    DATA_PATH = '../Data/popular_words.csv'
-    RESULT_PATH = None
-    result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH, to_save = False)
-    
-    #Need to extract the 
+if __name__ == '__main__':
+    pass
     
     
     
