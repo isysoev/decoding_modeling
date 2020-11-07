@@ -4,24 +4,187 @@ import pandas as pd
 import math
 import numpy as np
 
-from collections import defaultdict
-
-#My own debugging import
-from CandChunks import *
-from CandChunkInfo import *
-import decoding_test
-
-"""
-Need to change style of code for this to be more flexible/permanent.
-Some docstrings may not be updated to be consistent with code.
-
-Major changes since last decoding version:
-    - added def set_is_pre_postfix, related functions
-        and added lines to use this in candchunk generation.
-    - added candchunklengthfilter function 
-"""
+from collections import defaultdict 
 
 ####### GENERATE CANDIDATES #######
+
+class CandChunkInfo():
+    """
+    Key: The chunk (grapheme),
+        with many pronunications associated with each.
+    Stores pronunication -> score information
+        for each chunk.
+    """
+    
+    def __init__(self, num_examples):
+        self.data = {}
+        self.seen = set()
+        self.num_examples = num_examples
+        #Above:
+        #   Keys (IPA pronunication, String)
+        #   Values: Dict, with the following key-values:
+        #       'score': for that pronunication
+        #       'examples': List of 5 most frequent words
+        #           with this chunk: (grapheme, score).
+            
+    def __str__(self):
+        
+        if not self.data: #If empty
+            return {}
+        
+        report = ""
+        for ipa in self.data:
+            this_info = self.data[ipa]
+            report += '\n\tFor IPA: {}\n'.format(ipa)
+            report += '\t\tScore: {}\n'.format(this_info['score'])
+            report += '\t\tExamples: {}\n\n'.format(this_info['examples'])
+            
+        return report
+        
+    def add(self, new_ipa, new_freq, new_orig_word):
+        """
+        Checks whether this pronunication seen
+            and updates state appropriately.
+        Inputs:
+            new_ipa, String, pronunciation of chunk rep. by CandChunkInfo
+            new_freq, the float/double frequency of new_orig_word
+            new_orig_word, String, the word containing chunk as pre/suffix
+        Outputs: None, mutates the object to update information.
+        """
+        if new_ipa in self.seen:
+            curr_dict = self.data[new_ipa]
+            curr_dict['score'] += new_freq
+                
+            #If this orig word is new, append as new example
+            if not new_orig_word in curr_dict['seen_examples']:
+                curr_dict['examples'][new_orig_word] = new_freq
+            else:
+                #Otherwise, update score of old grapheme
+                curr_dict['examples'][new_orig_word] += new_freq
+                
+        else:
+            self.data[new_ipa] = {
+                'score': new_freq,
+                'examples': {new_orig_word: new_freq},
+                'seen_examples': set()
+                }
+        self.seen.add(new_ipa) 
+        self.data[new_ipa]['seen_examples'].add(new_orig_word)
+        
+    def select_max_score_examples(self, this_example_dict):
+        
+        """
+        Same as parent, but takes in one Example Dict, the value
+            of Dict with IPA key
+            and performs actual transformation.
+        Does NOT perform mutation yet.
+        Returns the updated example Dict.
+        """
+        
+        actual_num_ex = min(self.num_examples, len(this_example_dict))
+        ordered_keys = list(this_example_dict.keys())
+        ordered_keys.sort(reverse=True)
+        
+        which_examples = ordered_keys[:actual_num_ex]
+        
+        #Transfer example and its score to new Dictionary.
+        new_dict = {this_word: this_example_dict[this_word] \
+                    for this_word in which_examples}
+        
+        return new_dict
+
+        
+    def give_argmax_score(self):
+        """
+        Returns the word internal Dict
+            with pronunciation for max score.
+        """
+        
+        #Filters all of the non-top-n examples
+        #From each pronunication.
+        
+        #Establish parallel indexing.
+        poss_ipa = list(self.data.keys())
+        poss_scores = [self.data[key]['score'] for key in poss_ipa]
+        
+        argmax_idx = np.argmax(poss_scores)
+        argmax_ipa = poss_ipa[argmax_idx]
+        max_score = np.max(poss_scores)
+        
+        raw_examples = self.data[argmax_ipa]['examples']
+        filtered_examples = self.select_max_score_examples(raw_examples)
+        
+        max_ipa_info = {'P': argmax_ipa, 'score': max_score,
+                        'examples': filtered_examples}
+        
+        self.data = None #Clear memory, as this will no longer be used.
+        return max_ipa_info
+     
+class CandChunks():
+    
+    def __init__(self, num_examples=5):
+        
+        def _create_specific_info():
+            return CandChunkInfo(num_examples)
+        
+        self.chunks = defaultdict(_create_specific_info)
+        
+    def __str__(self):
+        report = ""
+        for key in self.chunks:
+            report += 'For {}'.format(key)
+            report += str(self.chunks[key]) + '\n'
+            
+        return report
+    
+    def clean_ipa(self, this_ipa):
+        """
+        Removes 0, 1, 2 characters from phoneme transcription.
+            0, 1, 2 were the digits that I found in the phonix text
+                by find function.
+        """
+        #10/4: Use of replace from: https://www.journaldev.com/23674/python-remove-character-from-string
+        for this_digit in [0, 1, 2]:
+            this_ipa = this_ipa.replace(str(this_digit), '')
+            
+        return this_ipa
+    
+    def add(self, this_chunk_list, df_word):
+        """
+        Inputs:
+            this_chunk_list, a list of p/g pairs (prefix or suffix)
+                This will be a list version of the pronunication
+                    in the dataset, split on |.
+            df_word, the DataFrame entry for this chunk_list
+        """
+        
+        this_freq = df_word['Frequency']
+        this_orig_word = df_word['Word']
+        
+        gp_separate = [elem.split('>') for elem in this_chunk_list]
+        this_phoneme = ''.join([gp_pair[0]\
+                                 for gp_pair in gp_separate])
+        this_grapheme = ''.join([gp_pair[1]\
+                                for gp_pair in gp_separate])
+        
+        this_phoneme = self.clean_ipa(this_phoneme)
+    
+        #Either add or update information.
+        self.chunks[this_grapheme].add(this_phoneme,\
+                                       this_freq, this_orig_word)
+        
+    def give_argmax_pronunications(self):
+        """
+        Returns the Dict: grapheme -> dict {pronunication, score}
+            for max-scoring pronunications.
+        """
+        
+        final_chunks = {}
+        for this_word in self.chunks:
+            this_word_info = self.chunks[this_word]
+            final_chunks[this_word] = this_word_info.give_argmax_score()
+    
+        return final_chunks
     
 def _update_word_candidate_chunks(df_word, cand_chunks):
     """
@@ -38,162 +201,24 @@ def _update_word_candidate_chunks(df_word, cand_chunks):
     info = df_word['P'].split('|') #See assumption in check_if_all_nan.
     #   Above splits into the p/g pairs.
     
-       
     #Take prefixes and update.
     for end_idx in range(1, len(info)):
         
         #Note that this stops one end idx short of the full word
         #   But that full word is covered in the suffix
         prefix_list = info[:end_idx]
-        cand_chunks.add(prefix_list, df_word, is_prefix = True)
+        cand_chunks.add(prefix_list, df_word)
     
     for start_idx in range(len(info)):
             
         suffix_list = info[start_idx:]
-        if start_idx == 0: #Mark entire words as prefix and postfix
-            cand_chunks.add(suffix_list, df_word,\
-                            is_prefix = True, is_postfix = True)
-        else:
-            cand_chunks.add(suffix_list, df_word, is_postfix = True)
+        cand_chunks.add(suffix_list, df_word)
 
-
-
-def _gen_prefixes(word):
-    """
-    Generates all prefixes (excluding the entire word) of this word.
-    Inputs: word, a String
-    Outputs: a List of Strings, the prefixes of this word.
-    """
-    
-    #Note that end slicing is inclusive,
-    #   so the actual end slice here is excluding the last letter
-    #   because n-1 will be passed as the final end slice,
-    #       which is exclusive.
-    return [word[:end_idx] for end_idx in range(1, len(word))]
-        
-def _gen_postfixes(word):
-    """
-    Generates all postfixes (excluding entire word) of this word.
-    Inputs: word, a String
-    Outputs, a List of Strings, the postfixes of this word.
-    """
-    return [word[start_idx:] for start_idx in range(1, len(word))]
-    
-def _process_chunk_prepostfixes(long_chunk_grapheme, chunk_dict):
-    """
-    Returns Set of chunks' prefixes/postfixes
-        (depending on identity of the original grapheme)
-    Inputs:
-        long_chunk_grapheme, the key of this chunk
-        chunk_dict, the .chunks attribute of the CandChunks object
-    Outputs:
-        poss_subchunks, a Set of the prefixes or postfixes of input.
-    """
-    this_cand_info = chunk_dict[long_chunk_grapheme]
-    
-    #Decide to process pre or post fixes (or both)
-    this_is_prefix = this_cand_info['is_prefix']
-    this_is_postfix = this_cand_info['is_postfix']
-    
-    poss_subchunks = []
-    if this_is_prefix:
-        poss_subchunks += _gen_prefixes(long_chunk_grapheme)
-    if this_is_postfix:
-        poss_subchunks += _gen_postfixes(long_chunk_grapheme)
-        
-    return set(poss_subchunks)
-    
-def _gen_to_filter_length_chunks(chunk_dict):
-    """
-    Returns chunk candidates to filter out such that:
-        the chunk only has examples that are associated
-            with the same but larger chunk. 
-    Accepts a chunk_dict before give_argmax_pronunications has been called.
-    Will return a Set of the chunk graphemes (keys) to remove from CandChunks
-        before final filtering is done.
-    """
-    
-    all_chunks = chunk_dict.keys()
-    chunk_set = set(all_chunks)
-    
-    chunk_iter = sorted(list(all_chunks), key = len, reverse = True)
-    #   The order to iterate over the chunks, preferring larger chunks.
-    #       This allows the check for all smaller chunks to be done.
-    
-    #Return list of the prefixes to process, and update all_chunks accordingly.
-    
-    all_subchunks_to_filter = set()
-    for long_chunk in chunk_iter:
-        this_poss_subchunks = _process_chunk_prepostfixes(long_chunk, chunk_dict)
-        this_subchunks = (chunk_set & this_poss_subchunks)
-        
-        long_examples = set(chunk_dict[long_chunk]['examples'])
-        for short_chunk in this_subchunks:
-            short_examples = set(chunk_dict[short_chunk]['examples'])
-            
-            #Remove the words that the long example has in common with the short example
-            #   to gauge whether this shorter chunk should be processed 
-            
-            new_short_examples = short_examples - (long_examples & short_examples)
-            short_examples = new_short_examples #Note -- this aliases to the main information Dict deliberately.
-            
-            if not new_short_examples: #No more words left
-                all_subchunks_to_filter.add(short_chunk) #Mark for deletion later.
-
-    return all_subchunks_to_filter
-
-def _filter_length_chunks(candchunk_raw_dict):
-    """
-    Performs remove on the candchunk raw to get rid of chunks
-        that are either prefixes or postfixes of a larger prefix or postfix
-            respectively.
-    Inputs:
-        candchunk_raw_dict, a CandChunks-style dictionary
-    Outputs:
-        new_chunk_dict, the updated CandChunks chunks attribute
-            to be assigned to the object.
-    """
-    
-    to_filter_chunks = _gen_to_filter_length_chunks(candchunk_raw_dict)
-    to_keep_chunks = set(candchunk_raw_dict.keys()) - to_filter_chunks
-    
-    new_chunk_dict = {}
-    for keep_grapheme in to_keep_chunks:
-        keep_info = candchunk_raw_dict[keep_grapheme]
-        new_chunk_dict[keep_grapheme] = keep_info
-    
-    return new_chunk_dict
-
-def select_max_score_examples(this_example_dict, num_examples):
-        
-        """
-        Taken from CandChunkInfo for temporary length-based filtering experiment.
-        
-        Same as parent, but takes in one Example Dict, the value
-            of Dict with IPA key
-            and performs actual transformation.
-        num_examples, the number of examples to retain
-        Does NOT perform mutation yet.
-        Returns the updated example Dict.
-        """
-        
-        actual_num_ex = min(num_examples, len(this_example_dict))
-        ordered_keys = list(this_example_dict.keys())
-        ordered_keys.sort(reverse=True)
-        
-        which_examples = ordered_keys[:actual_num_ex]
-        
-        #Transfer example and its score to new Dictionary.
-        new_dict = {this_word: this_example_dict[this_word] \
-                    for this_word in which_examples}
-        
-        return new_dict
-    
 def candidate_chunks(data_df):
     """
     Generates candidate chunks from information
         in the popular_words.csv as a DataFrame.
-    Importantly, returns the dictionary of final word-pronunciation
+    Importantly, returns the dictionary of final word-pronunication
         selections to maximize score.
         
     Inputs:
@@ -203,8 +228,8 @@ def candidate_chunks(data_df):
             Keys: the chunk grapheme (String)
             Values: a Dict,
                 Keys:
-                    'P' -> a String IPA pronunciation
-                    'score' -> a number, the score of the pronunciation
+                    'P' -> a String IPA pronunication
+                    'score' -> a number, the score of the pronunication
                     'examples' -> a Dict,
                         Keys: a word with this chunk, a String
                         Values: the score of that word, a number 
@@ -214,19 +239,9 @@ def candidate_chunks(data_df):
     for i in range(len(data_df)):
         _update_word_candidate_chunks(data_df.iloc[i], cand_chunks)
     
-    cand_chunks_dict = cand_chunks.give_argmax_pronunications()
-    #Above: this will no longer yield CandInfochunks, but the dictionaries.
-    
-    #Does NOT filter the examples for top 5. this is done later.
-    
-    #New: filter out the shorter prefixes/postfixes
-    filtered_chunks = _filter_length_chunks(cand_chunks_dict)
-    
-    new_filtered_chunks = {}
-    for key, chunk in filtered_chunks.items():
-        new_filtered_chunks[key] = select_max_score_examples(chunk, 5)
-    
-    return new_filtered_chunks
+    final_chunks = cand_chunks.give_argmax_pronunications()
+    return final_chunks
+
 
 ####### END GENERATE CANDIDATES #######
 
@@ -240,7 +255,7 @@ def _find_prefix_chunk(start_idx, cand_chunk, curr_chunk_set, curr_chunk_dict):
         start_idx, the start index (inclusive) of the substring
             to decode here.
         cand_chunk, String, the entire grapheme being decoded.
-    Returns the length and pronunciation of the prefix.
+    Returns the length and pronunication of the prefix.
     """
     
     #Find the largest prefixes first.
@@ -263,7 +278,7 @@ def _find_prefix_chunk(start_idx, cand_chunk, curr_chunk_set, curr_chunk_dict):
 def is_regular(cand_graph, cand_ipa, true_chunk_set, true_chunk_dict):
     """
     Inputs: cand_graph, the grapheme to be considered (String)
-            cand_ipa, the pronunciation of above.
+            cand_ipa, the pronunication of above.
             true_chunk_set, the Set of currently chosen sight chunks
             true_chunk_dict, the dictionary of the current
                 list of sight chunks.
@@ -336,18 +351,14 @@ def find_sight_chunks(cand_chunks):
 ####### END DECODING AND CHUNK SELECTION #######
 
 
-def _format_examples(this_chunk_dict, num_examples = 5):
+def _format_examples(this_chunk_dict):
     
     """
-    Note that this was merged with later code, so the description may not be fully updated.
-    
     Format the examples into one String,
-        selecting num_examples to display with highest scores
-            with words with high scores appearing first.
+       with high frequency words appearing first.
     Inputs:
         an element (nested Dict) of the output of find_sight_chunks,
             representing a single chunk. 
-        num_examples = 5
     Output:
         a String, such that value of 'example' is converted to String
             where different word pairs are joined by |
@@ -358,13 +369,14 @@ def _format_examples(this_chunk_dict, num_examples = 5):
     orig_example_dict = this_chunk_dict['examples']
     
     orig_example_tuples = [(word, score) for word, score\
-                         in orig_example_dict.items()]
-      
+                           in orig_example_dict.items()]
+        
     scores_only = [score for _, score in orig_example_tuples]
     order_idxs = np.argsort(scores_only).tolist()
     order_idxs.reverse()
     
-    order_idxs = order_idxs[:num_examples]
+    #10/11: https://docs.python.org/3/howto/sorting.html
+    order_words = sorted(list(orig_example_dict.keys()), reverse = True)
     
     new_example_list = []
     for order_idx in order_idxs:
@@ -374,18 +386,6 @@ def _format_examples(this_chunk_dict, num_examples = 5):
     
     new_example_str = '|'.join(new_example_list)
     return new_example_str
-
-    #10/11: https://docs.python.org/3/howto/sorting.html
-    #order_words = sorted(list(orig_example_dict.keys()), reverse = True)
-    
-    #new_example_list = []
-    #for this_word in order_words:
-    #    this_word_score = orig_example_dict[this_word]
-    #    this_example_str = '{}>{}'.format(this_word, this_word_score)
-    #    new_example_list.append(this_example_str)
-    
-    #new_example_str = '|'.join(new_example_list)
-    #return new_example_str
 
 ####### CSV WRITING AND SAVING #######
     
@@ -446,7 +446,7 @@ def create_chunks_df(final_chunks_dict, save_path = ''):
         if os.path.exists(this_dir):
             final_chunk_df.to_csv(save_path)
             wrote_success = True
-    if not wrote_success and save_path:
+    if not wrote_success:
         print('The path {} did not exist.'.format(save_path))
         print('The function will return the DataFrame '+\
                   'and save to current directory.') 
@@ -479,7 +479,7 @@ def check_if_all_nan(data_df):
 
 ####### END ASSUMPTION CHECK #######
 
-def gen_save_chunks(data_path, save_path):
+def gen_save_chunks(data_path, save_path, to_save = True):
     """
     The function to call to generate and save the final chunks.
     Inputs:
@@ -489,12 +489,14 @@ def gen_save_chunks(data_path, save_path):
     Outputs:
         chunk_df, the resultant DataFrame with the following columns:
             'G', the grapheme chunk (String),
-            'P', the IPA pronunciation (String),
+            'P', the IPA pronunication (String),
             'score', the score for this chunk (number),
             'examples', a list of the highest frequency words
                 with this chunk (String),
                     Formatted according to _gen_example_string.
     """
+    
+    print('Will {}attempt to save the output.'.format('not ' if not to_save else ''))
     
     data_df = pd.read_csv(data_path)
         
@@ -512,8 +514,7 @@ def gen_save_chunks(data_path, save_path):
     
     #Backup if file not saved correctly first time -- 
     #   just save the output somewhere to avoid rerunning entire program.
-    
-    if not successfully_wrote and save_path:
+    if to_save and not successfully_wrote and save_path:
         save_path = './popular_words_chunks.csv'
         if os.path.exists(save_path):
             print('Overwriting the file at this location.')
@@ -526,22 +527,19 @@ def gen_save_chunks(data_path, save_path):
 if __name__ == '__main__':
     #I broke the 'main' name above to prevent accidental re-runs
     
-    DATA_PATH = '/Users/nicolewong/Desktop/urop/Data/popular_words_shift.csv' #'../Data/debug_words.csv'
-    result_folder = '/Users/nicolewong/Desktop/urop/Data/old_length_dev'
-    
-    if not os.path.exists(result_folder):
-       os.makedirs(result_folder)
-        
-        
-    RESULT_PATH = os.path.join(result_folder, 'popular_words_chunks_shift_length_filter_tentative.csv')
-  
-    #result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH)
-    result_chunks_df = gen_save_chunks(DATA_PATH, '') #Don't save yet.
-    
-    print(result_chunks_df)
+    DATA_PATH = '../Data/popular_words.csv'
+    RESULT_PATH = '../Data/popular_words_chunks.csv'
+    result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH)
     
     print('Chunks generated and saved. Complete.')
-    print('Chunks generated. Complete.')
+    
+if __name__ == '__gmain__':
+    DATA_PATH = '../Data/popular_words.csv'
+    RESULT_PATH = None
+    result_chunks_df = gen_save_chunks(DATA_PATH, RESULT_PATH, to_save = False)
+    
+    #Need to extract the 
+    
     
     
     
