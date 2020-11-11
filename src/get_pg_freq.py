@@ -12,7 +12,6 @@ word_freq = {}
 for word in words:
     w, f = word.split(' ')
     word_freq[w] = float(f)
-print(sum(word_freq.values()))
 
 #open phonix.txt
 phonix_file = open(os.getcwd() + "/data/phonix.txt")
@@ -24,12 +23,9 @@ pg_rep = {}
 for word in words_phonemes:
     w, pg = word.split(' ')
     pg_rep[w] = pg
-#print(pg_rep)
 
 #find the words that are common to word_freq and to pg_rep
 shared_words = set(word_freq.keys()).intersection(set(pg_rep.keys()))
-
-#print(pg_rep['abalone'].split("|"))
 
 #Idea! split the shared words in pg_rep up by each `|` character to count how many of those specific pg pairs there are
 pg_freq = {}
@@ -43,5 +39,3 @@ for word in shared_words:
 total_mass = sum(pg_freq.values())
 for pg in pg_freq.keys():
     pg_freq[pg] /= total_mass
-
-print(pg_freq)
