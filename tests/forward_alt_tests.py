@@ -420,23 +420,21 @@ def check_decode_pre_post_success():
             "Contents of actual and expected don't match"
             
 def check_2_ipa_check():
-    """
-    This is manually checked. An AssertionError should occur with the neg_case.
-    """
 
     pos_case = pd.DataFrame.from_records({'Word': ['a', 'b']})
     neg_case = pd.DataFrame.from_records({'Word': ['a', 'b', 'a']})
     
-    decoding.check_if_no_2_ipa(pos_case)
-    print('Positive test case passed.')
+    assert decoding.check_if_no_2_ipa(pos_case),\
+        'Positive test case did not pass.'
     
-    decoding.check_if_no_2_ipa(neg_case) #Assertion should happen here
-    assert False, 'Negative test case passed, but it should not have.'
+     #Assertion should happen here
+    assert (not decoding.check_if_no_2_ipa(neg_case)),\
+        'Negative test case passed, but it should not have.'
 
 if __name__ == '__main__':
     check_prefix_decode()
     check_postfix_decode()
     check_length_filtering_and_decode()
     check_decode_pre_post_success()
-    #check_2_ipa_check()
+    check_2_ipa_check()
     

@@ -280,9 +280,8 @@ def check_if_no_2_ipa(data_df):
     
     all_df = list(data_df['Word'])
     set_all_df = set(all_df)
-    
-    assert len(all_df) == len(set_all_df),\
-        'Multiple pronunciations found per word in input DataFrame.'
+
+    return len(all_df) == len(set_all_df)
 
 ####### END ASSUMPTION CHECK #######
 
@@ -309,6 +308,9 @@ def gen_save_chunks(data_path, save_path, to_save = True):
         
     assert check_if_all_nan(data_df), \
         'Has some multiple pronunications available. Assumption fails.'
+    
+    assert check_if_no_2_ipa(data_df),\
+        'Some word appeared twice in the DataFrame.'
         
     this_cand_chunks = cand_chunks_gen.candidate_chunks(data_df)
     
