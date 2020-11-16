@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 
+from os.path import join
 
 def resave_first_num(num_select, data_path, full_path):
     """
@@ -27,8 +28,9 @@ def resave_first_num(num_select, data_path, full_path):
   
 if __name__ == '__main__':
     
-    DATA_PATH = '../Data/phonix_shift_word_freqs.csv'
-    cut_path = '../Data/popular_words_shift.csv'
+    DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
+    DATA_PATH = join(DATA_FOLDER, 'phonix_shift_word_freqs.csv')
+    cut_path = join(DATA_FOLDER, 'popular_words_shift.csv')
 
     num_select= 5000
     resave_first_num(num_select, DATA_PATH, cut_path)

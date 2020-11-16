@@ -160,10 +160,10 @@ def find_duplicates(df_path):
 if __name__ == '__main__':
     
     
-    TXT_PATH = '../Data'
+    TXT_PATH = '/Users/nicolewong/Desktop/urop/Data'
     PHONIX_PATH = join(TXT_PATH, 'phonix_shift.csv')
     FREQ_PATH = join(TXT_PATH, 'word-freqs.csv')
-    FINAL_PATH = '../Data/phonix_shift_word_freqs.csv'  
+    FINAL_PATH = join(TXT_PATH, 'phonix_shift_word_freqs.csv')
     
     final_intersection_df = intersection_texts(PHONIX_PATH, FREQ_PATH, FINAL_PATH)
     
