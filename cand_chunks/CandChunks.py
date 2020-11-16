@@ -1,15 +1,66 @@
 from CandChunkInfo import *
 from collections import defaultdict
+import os
+
+from os.path import join
+
+
+####### LOAD DEFAULT PRONUNCIATIONS ########
+
+def create_default_lookup():
+    """
+    Returns a Dict of str -> str (grapheme -> pronunciation)
+        for default phonemes.
+    """
+    default_P_dict = {}
+    with open(DEFAULT_P_PATH, 'r') as f:
+        
+        entries = f.readlines()
+
+        for entry in entries:
+            entry = entry.split()
+            grapheme, phoneme = entry[0], entry[1]
+            default_P_dict[grapheme] = phoneme
+        
+    return default_P_dict
+
+INPUTS_FOLDER = '/Users/nicolewong/Desktop/urop/Data/Inputs'
+DEFAULT_P_PATH = join(INPUTS_FOLDER, 'grapheme_defaults.txt')
+
+DEFAULT_P_DICT = create_default_lookup()
 
 class CandChunks():
     
-    def __init__(self, num_examples=5):
+    def __init__(self, num_examples=5, should_init_default = True):
+        """
+        should_init_default = Should initialize default pronunciations?
+        False if CandChunks stores entire words.
+        """
         
         def _create_specific_info():
             return CandChunkInfo(num_examples)
         
         self.chunks = defaultdict(_create_specific_info)
         
+        #Need to initialize default
+        if should_init_default:
+            for this_word, this_p in DEFAULT_P_DICT.items():
+                self.chunks[this_word].add(this_p, float('inf'), this_word)
+                self.chunks[this_word].data[this_p]['examples'] =\
+                    {'Not given, default chunk.': float('inf')}
+                    #Above: Avoid storing self as an example
+            #By the frequency, this will always be the pronunciation used.
+
+
+    def __len__(self):
+        return len(self.chunks)
+        
+    def create_default_lookup():
+        
+        return create_default_lookup()
+        #The definition outside of the class.
+        #Used to make verifications easier to run.
+
     def __str__(self):
         report = ""
         for key in self.chunks:
@@ -43,13 +94,15 @@ class CandChunks():
         this_orig_word = df_word['Word']
         
         gp_separate = [elem.split('>') for elem in this_chunk_list]
+
         this_phoneme = ''.join([gp_pair[0]\
                                  for gp_pair in gp_separate])
         this_grapheme = ''.join([gp_pair[1]\
                                 for gp_pair in gp_separate])
         
         this_phoneme = self.clean_ipa(this_phoneme)
-    
+        
+
         #Either add or update information.
         self.chunks[this_grapheme].add(this_phoneme,\
                                        this_freq, this_orig_word)

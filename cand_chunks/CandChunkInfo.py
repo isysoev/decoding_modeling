@@ -18,7 +18,7 @@ class CandChunkInfo():
         #       'score': for that pronunciation
         #       'examples': List of 5 most frequent words
         #           with this chunk: (grapheme, score).
-            
+   
     def __str__(self):
         
         if not self.data: #If empty
@@ -32,6 +32,16 @@ class CandChunkInfo():
             report += '\t\tExamples: {}\n\n'.format(this_info['examples'])
             
         return report
+    
+    def get_data(self):
+        return self.data
+    
+    def __eq__(self, other):
+        """
+        Give equality based on the equality of data,
+            which is a Dict of all primitive types. 
+        """
+        return self.data == other.get_data()
         
     def add(self, new_ipa, new_freq, new_orig_word):
         """
@@ -62,8 +72,7 @@ class CandChunkInfo():
                 }
         self.seen.add(new_ipa) 
         self.data[new_ipa]['seen_examples'].add(new_orig_word)
-
-        
+    
     def give_argmax_score(self):
         """
         Returns the word internal Dict
