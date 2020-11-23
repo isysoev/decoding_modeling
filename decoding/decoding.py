@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+#The two lines above are taken from Spyder's default output for a new file.
+
 #10/17 OrderedDict syntax: https://www.geeksforgeeks.org/ordereddict-in-python/
 #10/17 Some OrderedDict advice: http://gandenberger.org/2018/03/10/ordered-dicts-vs-ordereddict/
 from collections import OrderedDict
@@ -25,6 +30,8 @@ imports.import_files()
 import cand_chunks_funcs as cand_chunks_gen
 import decoding_funcs
 import formatting_funcs as formatting
+
+import special_cases
 
 ######### DECODING SECTION #########
 
@@ -122,6 +129,7 @@ def try_update_chunks(this_chunk_graph, this_chunk, chunk_type,\
     this_ipa = this_chunk['P']
     this_score = this_chunk['score']
     
+    this_chunk_graph = special_cases.filter_double_consonant(this_chunk_graph)
     decoded_ipa = decode_fn(this_chunk_graph,\
                true_chunks_set, true_chunks_dict)
         
@@ -240,8 +248,10 @@ def create_chunks_df(final_chunks_dict, save_path = ''):
         #10/11: https://stackoverflow.com/questions/5137497/find-current-directory-and-files-directory
         this_dir = os.path.dirname(save_path)
         if os.path.exists(this_dir):
-            accept_final_chunk_df.to_csv(save_path+'_accept_order.csv')
-            score_final_chunk_df.to_csv(save_path+'_score_order.csv')
+            #11/21: Encoding problems: https://forum.openoffice.org/en/forum/viewtopic.php?f=9&t=69798
+            #11/21: Working with CSV encoding: https://stackoverflow.com/questions/25788037/pandas-df-to-csvfile-csv-encode-utf-8-still-gives-trash-characters-for-min/43684587
+            accept_final_chunk_df.to_csv(save_path+'_accept_order.csv', encoding = 'utf-8')
+            score_final_chunk_df.to_csv(save_path+'_score_order.csv', encoding = 'utf-8')
             wrote_success = True
     if not wrote_success:
         print('The path {} did not exist, so nothing was saved.'.format(save_path))

@@ -13,7 +13,8 @@ def import_files():
         'decoding',
         'cand_chunks',
         'tests',
-        'formatting'
+        'formatting',
+        'model'
         ]
     
     for path in files_to_import:
