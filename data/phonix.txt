@@ -44884,7 +44884,7 @@ thanks θ>th|æ>a|ŋ>n|k>k|s>s
 thanksgiving θ>th|æ>a|ŋ>n|k>k|s>s|g>g|ɪ>i|v>v|ɪ>i|ŋ>ng
 thar θ>th|ɑ>a|r>r
 tharp θ>th|ɑ>a|r>r|p>p
-that ð>th|æ>a|t>t
+that ð>th|ʌ>a|t>t
 thatch θ>th|æ>a|tʃ>tch
 thatched θ>th|æ>a|tʃ>tch|t>ed
 thatcher θ>th|æ>a|tʃ>tch|ɝ>er
