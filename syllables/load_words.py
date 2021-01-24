@@ -1,6 +1,19 @@
 from word_tools import word_funcs
 from os.path import join
 
+
+def get_celex_syllables(celex_syllable_path: object) -> object:
+
+    with open(celex_syllable_path) as f:
+        syllable_data = {}
+
+        for word_line in f.readlines():
+            split_word = word_line.split('\\')
+            word, breakdown = split_word[1].strip(), split_word[-1].strip()
+            syllable_data[word] = breakdown
+
+        return syllable_data
+
 def load_data(DATA_PATH, select_popular_num=5000):
     """
     Filter doubles -> whether to replace all double consonants with single consonants.
@@ -24,6 +37,7 @@ def load_vowel_P(load_path):
 ###########################
 #### HELPER FUNCTIONS #####
 ###########################
+
 
 def _load_raw_data(DATA_PATH):
     # 12/12: Code below taken/adapted from Ivan's code.
@@ -54,3 +68,27 @@ def select_popular_n(phonix_dict, wordfreqs, select_popular_num):
     word_dict = {word: phonix_dict[word] for word in popular_words}
 
     return popular_words, word_dict
+
+####### LOAD DEFAULT PRONUNCIATIONS ########
+
+def create_default_lookup(default_p_path):
+    """
+    Returns a Dict of str -> str (grapheme -> pronunciation)
+        for default phonemes.
+    """
+    default_P_dict = {}
+
+    with open(default_p_path, 'r') as f:
+        entries = f.readlines()
+
+        for entry in entries:
+            entry = entry.split()
+            grapheme, phoneme = entry[0], entry[1]
+            default_P_dict[grapheme] = phoneme
+
+    return default_P_dict
+
+def create_default_pg_tuples(default_p_path):
+    default_pg = create_default_lookup(default_p_path)
+    default_pg_set = set(word_funcs.get_pg_pair("{}>{}".format(p, g)) for g, p in default_pg.items())
+    return default_pg_set

@@ -12,6 +12,9 @@ def get_basic_phoneme(phoneme):
 		return phoneme[:-1]
 	return phoneme
 
+def ipa_to_grapheme_str(word_tuple):
+    return ''.join(pg[1] for pg in word_tuple)
+
 def get_phonemes(phonemes_code):
 	return tuple([get_basic_phoneme(phoneme_code) for phoneme_code in phonemes_code.split(';')])
 

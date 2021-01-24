@@ -14,25 +14,62 @@ VOWELS = load_words.load_vowel_P(syllable_path)
 ### VOWEL/CONSONANT #####
 #########################
 
+def process_dict_double_consonant(word_dict):
 
-def approx_monosyllabic(word_csv):
     """
-    Output: dict, str (word) to List with tuple (g,p) for all pg pairs.
+    Inputs:
+        word_dict, the output of load_data (phonix and word-freqs intersection)
+            keys = the word (str)
+            values = the tuple representation of the pronunciation
+    Outputs:
+        new_word_dict, a copy of the dictionary with the double consonants processed.
     """
-    # Until the proper syllable algorithm is written
-    #   with modifications,
-    # I use a syllablification algorithm with some unwanted behaviors
-    # relative to this application, like splitting consonants.
 
-    word_list = word_csv['Word']
-    P_list = word_csv['P']
+    new_word_dict = {}
+    for word, P in word_dict.items():
+        replace_idx = find_double_consonant(P)
+        new_word_dict[word] = P[:] if replace_idx is None else process_double_consonant(P, replace_idx)
 
-    syllables = SyllableTokenizer()
-    mono_words = {word: split_ipa_rep(ipa) for word, ipa
-                  in zip(word_list, P_list)
-                  if len(syllables.tokenize(word)) == 1}
+    return new_word_dict
 
-    return mono_words
+def find_double_consonant(word_rep):
+    """
+    Inputs:
+        word_P, the tuple-form word representation.
+    Outputs:
+        the index (int) of the location of the double consonant if there is one
+        None if there is no double consonant
+    """
+    for idx, pg in enumerate(word_rep):
+        p, g = pg
+        if is_consonant(p): #Defined as "not a vowel"
+            if len(g) == 2 and g[0] == g[1]:
+                return idx
+
+    return None
+
+
+def process_double_consonant(word_P, double_cons_idx):
+    """
+    Inputs:
+        word_P, the tuple-form word representation.
+        double_cons_idx, int, the location of the double consonant.
+    Outputs:
+        new_word_P, the tuple-form word representation with the double consonant processed out
+            to be two single consonants
+    """
+
+    assert double_cons_idx is not None, 'Wrongly used process double consonant on a word without it.'
+
+    this_cons = word_P[double_cons_idx][1][0]
+    double_consonant_insert = (((f'{this_cons}',), f'{this_cons}'),)
+
+    #Insert the processed double consonant instead of the double consonant itself.
+    new_word_P = word_P[:double_cons_idx] + double_consonant_insert[:] + double_consonant_insert[:]
+    new_word_P += word_P[double_cons_idx+1:] if (double_cons_idx + 1) < len(word_P) else tuple()
+
+    return new_word_P
+
 
 def is_vowel(unit):
     assert isinstance(unit, tuple), \
@@ -41,8 +78,10 @@ def is_vowel(unit):
     global VOWELS
     return (unit in VOWELS)
 
+
 def is_consonant(pg_pair):
     return not is_vowel(pg_pair)
+
 
 def has_vowel(poss_syllable):
     return any(is_vowel(p) for p, _ in poss_syllable)
@@ -58,7 +97,6 @@ def _split_ipa_rep(word_ipa_str):
 ##############################################
 ##### Identify special linguistic pieces #####
 ##############################################
-
 
 def is_cvc_any(word_tuple):
     """

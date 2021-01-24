@@ -59,10 +59,10 @@ if __name__ == '__main__':
     DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
 
     popular_words_order, word_dict = load_words.load_data(DATA_FOLDER)
-    save_split_path = join(DATA_FOLDER, 'old_syllables')
+    save_split_path = join(DATA_FOLDER, 'syllables')
 
     algorithm_type = 'em'
-    save_split_path = join(save_split_path, join(algorithm_type, 'popular_split_em_1_onset_tentative_refactored.txt'))
+    save_split_path = join(save_split_path, join(algorithm_type, 'popular_split_em_1_onset_tentative_no_mono.txt'))
 
     this_dir = os.path.dirname(save_split_path)
     if not exists(this_dir):

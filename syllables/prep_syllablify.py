@@ -64,7 +64,7 @@ def gen_unit_counts(words):
     #   This should be the only case of possible overcounting
     #       where the unique countable object is (parent word -> unit) pairs.
 
-    single_types_func = [identify_pieces.find_vc, identify_pieces.find_cv, identify_pieces.find_mono]
+    single_types_func = [identify_pieces.find_vc, identify_pieces.find_cv]#, identify_pieces.find_mono]
 
     for func in single_types_func:
         subset_words = func(words)
