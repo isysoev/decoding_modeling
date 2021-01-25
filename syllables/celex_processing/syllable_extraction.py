@@ -67,5 +67,5 @@ if __name__ == "__main__":
     syllable_dict_post_onsets = onsets_and_rimes.postprocess_to_onsets_and_rimes(syllable_dict)
     syllable_dict_post_strict = strict_decoding.attempt_full_decode(syllable_dict_post_onsets, default_pg_set)
 
-    #counts = impact.g2p_to_counts(syllable_dict_post_strict)
-    #print(counts)
+    counts = impact.g2p_to_counts(syllable_dict_post_strict)
+    print(counts)
