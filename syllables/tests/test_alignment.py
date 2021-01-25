@@ -58,10 +58,37 @@ def test_align_pg_and_syllables():
 
     assert expected == actual
 
+
+def explore_alignment_exceptions():
+
+    #   1/24 Some "exception" cases from CELEX/phonix.txt
+    #   In order: silent letters, merged r, merged double r
+    cases = [
+        (
+            "be-lov-ed",
+            "b>b|ɪ>e|l>l|ʌ>o|v>ve|d>d"
+        ),
+        (
+            "co-ro-na",
+            "k>c|ɝ>or|oʊ>o|n>n|ʌ>a"
+        ),
+        (
+            "ar-ri-val",
+            "ɝ>arr|aɪ>i|v>v|ʌ>a|l>l"
+        ),
+    ]
+
+    current_celex, current_phonix = cases[0]
+    current_celex = current_celex.replace('--', '-').split('-')
+    result = alignment.align_pg_and_syllables(current_celex, current_phonix)
+
+    print(result)
+
 if __name__ == "__main__":
 
     tests = [
-        test_align_pg_and_syllables,
+        #test_align_pg_and_syllables,
+        explore_alignment_exceptions
     ]
 
     for test in tests:

@@ -9,14 +9,14 @@ from collections import defaultdict
 def postprocess_to_onsets_and_rimes(old_g2p):
     """
     Similiar to generation of initial units for EM syllablification.
-    However, only identifies VC, CV, and CVC (mono is too common)
+    However, only identifies CVC
         amongst the old_syllables of the resulting words.
     words here is a g2p dict (see stability),
         but is converted to the expected g->p
     """
 
     # Need to process individually
-    #   because dict assumption in prep won't work for collisons.
+    #   because dict assumption in prep won't work for collisions.
 
     # Which CVC are you seeking to discard?
     # Is it safe to discard the entire key?
@@ -25,15 +25,15 @@ def postprocess_to_onsets_and_rimes(old_g2p):
     orig_g2p_len = impact.num_syllables(g2p)
 
     # Find CVC words.
-    cvc_words_any = []
+    cvc_words = []
     for g, g_dict in g2p.items():
         for pg_str in g_dict:
             word_tuple = word_funcs.get_mapping(pg_str)
-            if identify_pieces.is_cvc_any(word_tuple):
-                cvc_words_any.append((g, word_tuple))
+            if identify_pieces.is_cvc(word_tuple):
+                cvc_words.append((g, word_tuple))
 
     # Remove CVC words from g2p.
-    for g, word_tuple in cvc_words_any:
+    for g, word_tuple in cvc_words:
         pg_str = word_funcs.mapping_to_str(word_tuple)
         g2p[g].remove(pg_str)
         if not g2p[g]:
@@ -42,7 +42,7 @@ def postprocess_to_onsets_and_rimes(old_g2p):
 
     # Find onsets and rimes
     onsets_and_rimes = set()
-    for word, word_rep in cvc_words_any:
+    for word, word_rep in cvc_words:
         onset = (word_rep[0],)
         rime = word_rep[1:]
         for piece in [onset, rime]:
@@ -60,7 +60,7 @@ def postprocess_to_onsets_and_rimes(old_g2p):
 
     curr_g2p_len = impact.num_syllables(new_g2p)
 
-    print(f'CVC words detected: {len(cvc_words_any)}')
+    print(f'CVC words detected: {len(cvc_words)}')
     print(f'Onsets and rimes detected: {len(onsets_and_rimes)}')
     print(f'Original g2p length: {orig_g2p_len}')
     print(f'Current g2p length: {curr_g2p_len}')
