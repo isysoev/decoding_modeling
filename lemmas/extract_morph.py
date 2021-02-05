@@ -1,5 +1,7 @@
-# Python substitute for stripcls.awk from CELEX
+# Python version of stripcls.awk from CELEX
 #   Tentative methodology to split up the morphemes.
+
+#   This should not be used yet! It is tentative, and was discontinued.
 
 import string
 import ast
@@ -45,5 +47,3 @@ if __name__ == "__main__":
         all_lemmas = list(all_lemmas)
 
     print(all_lemmas)
-
-
