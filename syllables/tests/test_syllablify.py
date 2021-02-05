@@ -5,11 +5,9 @@ import sys
 code_path = '/Users/nicolewong/Desktop/urop/code/syllables'
 sys.path.insert(1, code_path)
 
-import imports
 imports.import_files()
 
-import prep_syllablify as prep
-import syllablify
+from em import prep_syllablify as prep, syllablify
 from word_tools import word_funcs, identify_pieces
 import load_words
 from file_gen import data_run_once

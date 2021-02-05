@@ -27,8 +27,8 @@ def process_dict_double_consonant(word_dict):
 
     new_word_dict = {}
     for word, P in word_dict.items():
-        replace_idx = find_double_consonant(P)
-        new_word_dict[word] = P[:] if replace_idx is None else process_double_consonant(P, replace_idx)
+        replace_idxs = find_double_consonant(P)
+        new_word_dict[word] = P[:] if replace_idxs is None else process_double_consonants(P, replace_idxs)
 
     return new_word_dict
 
@@ -40,35 +40,43 @@ def find_double_consonant(word_rep):
         the index (int) of the location of the double consonant if there is one
         None if there is no double consonant
     """
+
+    to_process_idx = []
     for idx, pg in enumerate(word_rep):
         p, g = pg
         if is_consonant(p): #Defined as "not a vowel"
             if len(g) == 2 and g[0] == g[1]:
-                return idx
+                # 1/27: Fixed bug here where it was only finding first instance of a double consonant, rather than all.
+                to_process_idx.append(idx)
 
-    return None
+    return None if not to_process_idx else to_process_idx
 
 
-def process_double_consonant(word_P, double_cons_idx):
+def process_double_consonants(word_P, replace_idxs):
     """
     Inputs:
         word_P, the tuple-form word representation.
-        double_cons_idx, int, the location of the double consonant.
+        replace_idxs, [ints], the locations of the double consonant.
     Outputs:
         new_word_P, the tuple-form word representation with the double consonant processed out
             to be two single consonants
     """
 
-    assert double_cons_idx is not None, 'Wrongly used process double consonant on a word without it.'
+    # 1/27: Fixed bug here where it was only finding first instance of a double consonant, rather than all.
 
-    this_cons = word_P[double_cons_idx][1][0]
-    double_consonant_insert = (((f'{this_cons}',), f'{this_cons}'),)
+    assert replace_idxs is not None, 'Wrongly used process double consonant on a word without it.'
 
-    #Insert the processed double consonant instead of the double consonant itself.
-    new_word_P = word_P[:double_cons_idx] + double_consonant_insert[:] + double_consonant_insert[:]
-    new_word_P += word_P[double_cons_idx+1:] if (double_cons_idx + 1) < len(word_P) else tuple()
+    this_new_P = tuple()
+    for this_idx, this_pg in enumerate(word_P):
 
-    return new_word_P
+        if this_idx not in replace_idxs:
+            this_new_P += (tuple(this_pg),)
+        else: # Need to process consonants
+            this_cons = word_P[this_idx][1][0]
+            double_consonant_insert = (((f'{this_cons}',), f'{this_cons}'),)
+            this_new_P += tuple(double_consonant_insert) + tuple(double_consonant_insert)
+
+    return this_new_P
 
 
 def is_vowel(unit):
@@ -86,17 +94,39 @@ def is_consonant(pg_pair):
 def has_vowel(poss_syllable):
     return any(is_vowel(p) for p, _ in poss_syllable)
 
-def _split_ipa_rep(word_ipa_str):
-
-    #TODO -- replace all of these with functions in word_tools.
-
-    g2p = [tuple(pair.split('>'))
-               for pair in word_ipa_str.split('|')]
-    return g2p
-
 ##############################################
 ##### Identify special linguistic pieces #####
 ##############################################
+
+def _find_first_vowel(phonemes):
+
+    for idx, p in enumerate(phonemes):
+        if is_vowel(p):
+            return idx
+    return None #No vowels.
+
+def find_c_any_v_c_any(word_tuple):
+
+    """
+    Allows CVC-style breaking,
+        where the "onset" is any string of consonants,
+        and the "rime" is the rest of the word,
+            where a vowel and at least one consonant must follow the onset immediately.
+    """
+
+    if len(word_tuple) < 3:
+        return None
+
+    phonemes = word_tuples_to_phonemes(word_tuple)
+    first_vowel_idx = _find_first_vowel(phonemes)
+
+    if first_vowel_idx is None or first_vowel_idx == 0: #Don't accept words without an onset.
+        return None
+
+    consonant_streak = word_tuple[:first_vowel_idx]
+    extended_rime = word_tuple[first_vowel_idx:]
+
+    return consonant_streak, extended_rime
 
 def is_cvc_any(word_tuple):
     """

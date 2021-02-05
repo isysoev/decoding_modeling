@@ -1,6 +1,25 @@
 from word_tools import word_funcs
 from os.path import join
 
+def load_my_celex_phonix_data():
+
+    """
+    Function used for consistent loading across files --
+        mostly for my convenience and to prevent me from accidentally loading different files.
+    """
+
+    CELEX_PATH = "/Users/nicolewong/Desktop/urop/celex2/english/eol"
+    CELEX_SYLL_PATH = join(CELEX_PATH, 'eol.cd')
+    PHONIX_PATH = "/Users/nicolewong/Desktop/urop/data"
+
+    INPUTS_FOLDER = '/Users/nicolewong/Desktop/urop/Data/Inputs'
+    DEFAULT_P_PATH = join(INPUTS_FOLDER, 'grapheme_defaults.txt')
+
+    celex_dict = get_celex_syllables(CELEX_SYLL_PATH)
+    phonix_words, phonix_dict = load_data(PHONIX_PATH)  # Already intersected with 5000 popular words.
+    default_pg_set = create_default_pg_tuples(DEFAULT_P_PATH)
+
+    return celex_dict, phonix_dict, default_pg_set
 
 def get_celex_syllables(celex_syllable_path: object) -> object:
 

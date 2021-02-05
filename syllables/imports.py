@@ -8,7 +8,7 @@ import os
 from os.path import join
 
 def import_files():
-    abs_code_path = '/Users/nicolewong/Desktop/urop/code/syllables/'
+    abs_code_path = '//'
 
     files_to_import = [
         '',

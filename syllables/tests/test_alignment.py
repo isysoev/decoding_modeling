@@ -10,9 +10,11 @@ code_path = '/Users/nicolewong/Desktop/urop/code/syllables'
 sys.path.insert(1, code_path)
 
 import imports
+
 imports.import_files()
 
-from word_tools import alignment, identify_pieces, word_funcs
+from word_tools import alignment, identify_pieces
+
 
 def test_align_pg_and_syllables():
 

@@ -1,4 +1,5 @@
 import imports
+
 imports.import_files()
 
 from analysis import impact
@@ -6,7 +7,7 @@ from word_tools import word_funcs, identify_pieces
 
 from collections import defaultdict
 
-def postprocess_to_onsets_and_rimes(old_g2p):
+def postprocess_to_extended_onsets_and_rimes(old_g2p, verbose = False):
     """
     Similiar to generation of initial units for EM syllablification.
     However, only identifies CVC
@@ -18,52 +19,31 @@ def postprocess_to_onsets_and_rimes(old_g2p):
     # Need to process individually
     #   because dict assumption in prep won't work for collisions.
 
-    # Which CVC are you seeking to discard?
-    # Is it safe to discard the entire key?
+    onset_parent_dict = {}
+    with_onset_g2p = defaultdict(set)
 
-    g2p = {k : {sub_v for sub_v in v} for k, v in old_g2p.items()}
-    orig_g2p_len = impact.num_syllables(g2p)
+    for g, g_dict in old_g2p.items():
+        for word_tuple in g_dict:
+            onset_result = identify_pieces.find_c_any_v_c_any(word_tuple)
+            if onset_result is None:
+                #   If this P is not broken into onsets and rimes, it is its own parent (the syllable still)
+                onset_parent_dict[word_tuple] = word_tuple
+                with_onset_g2p[g].add(word_tuple)
+            else:
+                onset, rime = onset_result
+                for piece in [onset, rime]:
+                    this_g = word_funcs.ipa_to_grapheme_str(piece)
+                    with_onset_g2p[this_g].add(piece)
+                    onset_parent_dict[piece] = word_tuple
+                    #   TODO: The parent for now -- in the future, accept highest frequency parent.
 
-    # Find CVC_any words.
-    cvc_any_words = []
-    for g, g_dict in g2p.items():
-        for pg_str in g_dict:
-            word_tuple = word_funcs.get_mapping(pg_str)
-            if identify_pieces.is_cvc_any(word_tuple):
-                cvc_any_words.append((g, word_tuple))
+    orig_g2p_len = impact.num_syllables(old_g2p)
+    curr_g2p_len = impact.num_syllables(with_onset_g2p)
 
-    # Remove CVC_any words from g2p.
-    for g, word_tuple in cvc_any_words:
-        pg_str = word_funcs.mapping_to_str(word_tuple)
-        g2p[g].remove(pg_str)
-        if not g2p[g]:
-            del (g2p[g])
-        # This specific mapping will be accounted for via onset/rime.
+    if verbose:
+        print(f'Tentative C any V C any analysis (onsets/rimes).')
+        print(f'\tOriginal g2p length: {orig_g2p_len}')
+        print(f'\tCurrent g2p length: {curr_g2p_len}')
+        print(f'\t\tDifference: {orig_g2p_len - curr_g2p_len}')
 
-    # Find onsets and rimes
-    onsets_and_rimes = set()
-    for word, word_rep in cvc_any_words:
-        onset = (word_rep[0],)
-        rime = word_rep[1:]
-        for piece in [onset, rime]:
-            this_g = word_funcs.ipa_to_grapheme_str(piece)
-            pg_str = word_funcs.mapping_to_str(piece)
-            onsets_and_rimes.add((this_g, pg_str))
-
-    # Add onsets and rimes to g2p, convert g2p to a non-count dictionary.
-    new_g2p = defaultdict(set)
-    new_g2p.update(g2p)
-
-    for pair in onsets_and_rimes:
-        this_g, this_pg = pair
-        new_g2p[this_g].add(this_pg)
-
-    curr_g2p_len = impact.num_syllables(new_g2p)
-
-    print(f'CVC words detected: {len(cvc_any_words)}')
-    print(f'Onsets and rimes detected: {len(onsets_and_rimes)}')
-    print(f'Original g2p length: {orig_g2p_len}')
-    print(f'Current g2p length: {curr_g2p_len}')
-    print(f'\tDifference: {orig_g2p_len - curr_g2p_len}')
-
-    return new_g2p
+    return with_onset_g2p, onset_parent_dict

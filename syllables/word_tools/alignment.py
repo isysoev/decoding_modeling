@@ -1,6 +1,46 @@
 ## This is for aligning pg pairs and syllables.
 
 import word_funcs, identify_pieces
+from collections import defaultdict
+
+def align_celex_syllables(celex_dict, raw_phonix_dict):
+    """
+    Merges celex and phonix dict syllable data with alignments.
+    Inputs:
+        raw_celex_dict, a Dictionary from get_celex_syllables
+        phonix_dict, a Dictionary from load_data's second argument
+    Outputs:
+        a G->P Dict mapping (str -> sorted lists of pronunciations)
+            of the words in the intersection of celex and phonix dict.
+    """
+
+    non_aligned_words = []
+
+    list_words = sorted(list(set(celex_dict.keys()) & set(raw_phonix_dict.keys())))
+    phonix_dict = identify_pieces.process_dict_double_consonant(raw_phonix_dict)
+
+    syllable_dict = defaultdict(set)
+    syllable_parents = {}
+
+    for word in list_words:
+        celex_syllables = celex_dict[word].replace('--', '-').split('-')
+        #   Above: Replace the special "--" marking between joined compound words with a normal syllable break.
+        #   This prevents empty tuples being created that crash the default decoding.
+        word_tuple = phonix_dict[word]
+        all_syllables = align_pg_and_syllables(celex_syllables, word_tuple)
+
+        if all_syllables is None:
+            non_aligned_words.append((celex_dict[word], word_funcs.mapping_to_str(word_tuple)))
+            continue #See message in alignment.py for this function
+
+        for syll in all_syllables:
+            this_grapheme = word_funcs.ipa_to_grapheme_str(syll)
+            syllable_dict[this_grapheme].add(syll)
+            syllable_parents[syll] = phonix_dict[word]
+            #   TODO: The parent for now -- in the future, accept highest frequency parent.
+
+    return syllable_dict, non_aligned_words, syllable_parents
+
 
 def process_alignment_exception(celex_idx, phonix_idx, celex_syll_list, word_tuple):
     """

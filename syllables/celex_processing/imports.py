@@ -4,9 +4,7 @@
 # https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
 
 import sys
-import os
 from os.path import join
-
 
 def import_files():
     abs_code_path = '/Users/nicolewong/Desktop/urop/code/syllables/'
