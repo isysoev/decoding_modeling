@@ -3,7 +3,8 @@
 
 import os
 from os.path import join, exists
-import load_words
+from syllables import load_words
+
 
 ########################
 ##### GENERATE P #######

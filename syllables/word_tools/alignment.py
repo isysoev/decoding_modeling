@@ -1,6 +1,5 @@
-## This is for aligning pg pairs and syllables.
 
-import word_funcs, identify_pieces
+from syllables.word_tools import word_funcs, identify_pieces
 from collections import defaultdict
 
 def align_celex_syllables(celex_dict, raw_phonix_dict):
@@ -10,8 +9,11 @@ def align_celex_syllables(celex_dict, raw_phonix_dict):
         raw_celex_dict, a Dictionary from get_celex_syllables
         phonix_dict, a Dictionary from load_data's second argument
     Outputs:
-        a G->P Dict mapping (str -> sorted lists of pronunciations)
+        a G->P DefaultDict mapping (str -> sorted lists of pronunciations)
             of the words in the intersection of celex and phonix dict.
+        a P->int DefaultDict mapping
+            of a particular syllable in tuple representation to its frequency (pure word count)
+        non_aligned_words, a List of all words that cannot be accurately broken down.
     """
 
     non_aligned_words = []
@@ -20,7 +22,7 @@ def align_celex_syllables(celex_dict, raw_phonix_dict):
     phonix_dict = identify_pieces.process_dict_double_consonant(raw_phonix_dict)
 
     syllable_dict = defaultdict(set)
-    syllable_parents = {}
+    syllable_counts = defaultdict(int)
 
     for word in list_words:
         celex_syllables = celex_dict[word].replace('--', '-').split('-')
@@ -36,10 +38,9 @@ def align_celex_syllables(celex_dict, raw_phonix_dict):
         for syll in all_syllables:
             this_grapheme = word_funcs.ipa_to_grapheme_str(syll)
             syllable_dict[this_grapheme].add(syll)
-            syllable_parents[syll] = phonix_dict[word]
-            #   TODO: The parent for now -- in the future, accept highest frequency parent.
+            syllable_counts[syll] += 1
 
-    return syllable_dict, non_aligned_words, syllable_parents
+    return syllable_dict, syllable_counts, non_aligned_words
 
 
 def process_alignment_exception(celex_idx, phonix_idx, celex_syll_list, word_tuple):

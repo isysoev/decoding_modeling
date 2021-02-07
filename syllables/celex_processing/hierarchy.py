@@ -1,74 +1,96 @@
-import imports
-imports.import_files()
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
 
-import load_words
-from word_tools import alignment, identify_pieces, word_funcs
+import sys
 
-from analysis import impact
-from decoding import strict_decoding, onsets_and_rimes
+code_path = '/Users/nicolewong/Desktop/urop/code/'
+sys.path.insert(1, code_path)
 
-from collections import defaultdict
+from syllables.word_tools import alignment, word_funcs, identify_pieces
+from syllables import load_words
 
-def stabilize_piece_step(piece_dict, parent_dict, piece_to_parent_dict):
+from syllables.analysis import impact
+from syllables.decoding import onsets_and_rimes, strict_decoding
 
-    stable_dict = {}
-    remains_dict = defaultdict(set)
+def get_default_onsets_rimes(onset_rime_dict, onset_rime_counts, default_pg_set):
 
-    for grapheme, grapheme_collection in piece_dict.items():
+    irregular_onset_rimes = strict_decoding.find_irregular_chunks(onset_rime_dict, default_pg_set)
+    default_onset_rimes = strict_decoding.filter_popular_chunks(irregular_onset_rimes, onset_rime_counts)
 
-        if len(grapheme_collection) == 1:
-            stable_dict[grapheme] = list(grapheme_collection)[0]
-        else:
-            for conflict_P in grapheme_collection:
-                parent_rep = piece_to_parent_dict[conflict_P]
-                parent_grapheme = word_funcs.ipa_to_grapheme_str(parent_rep)
-                remains_dict[word_funcs.ipa_to_grapheme_str(parent_rep)] |= {elem for elem in parent_dict[parent_grapheme]}
+    default_onset_rimes_as_set = set(default_onset_rimes.values())
+    return default_onset_rimes_as_set
 
-    return stable_dict, remains_dict
+def get_default_syllables(syllable_dict, syllable_counts, curr_chunks_set):
 
+    irregular_syllables = strict_decoding.find_irregular_chunks(syllable_dict,
+                                                                curr_chunks_set)
+    default_syllables = strict_decoding.filter_popular_chunks(irregular_syllables, syllable_counts)
+    default_syllables_as_set = set(default_syllables.values())
+
+    return default_syllables_as_set
+
+def get_default_words(phonix_dict_formatted, curr_chunk_set):
+
+    irregular_words = strict_decoding.find_irregular_chunks(phonix_dict_formatted,
+                                                            curr_chunk_set)
+
+    irregular_words_as_set = set(list(this_collect)[0] for this_collect in irregular_words.values())
+
+    assert all(len(collect) == 1 for collect in irregular_words.values()), \
+        "The word sets internally should be guaranteed to only possess one word."
+
+    return irregular_words_as_set
+
+def find_chunks(celex_dict, raw_phonix_dict):
+
+    #   Above: To match the processing of syllables of all double consonants.
+    phonix_dict = identify_pieces.process_dict_double_consonant(raw_phonix_dict)
+
+    default_pg_dict = strict_decoding.find_default_pg_pairs(phonix_dict, top_n=47)
+
+    default_pg_set = set(default_pg_dict.values())
+    #   47 was the length of the original grapheme defaults text file,
+    #       which was probably with respect to word-freq, not pure word counts.
+
+    # Get the pieces themselves
+
+    syllable_dict, syllable_counts, non_aligned_words = alignment.align_celex_syllables(celex_dict, phonix_dict)
+    onset_rime_dict, onset_rime_counts = onsets_and_rimes.onsets_and_rimes(syllable_dict)
+
+    ## Filter the pieces, construct the hierarchy
+
+    curr_chunk_set = {elem for elem in default_pg_set}
+
+    default_onset_rimes_as_set = get_default_onsets_rimes(onset_rime_dict, onset_rime_counts, curr_chunk_set)
+    curr_chunk_set |= default_onset_rimes_as_set
+
+    default_syllables_as_set = get_default_syllables(syllable_dict, syllable_counts, curr_chunk_set)
+    curr_chunk_set |= default_syllables_as_set
+
+    #   Skipping the morpheme stage due to previous discussion of problems with CELEX inconsistency.
+
+    phonix_dict_formatted = {word: {ipa} for word, ipa in phonix_dict.items()}
+    default_words_as_set = get_default_words(phonix_dict_formatted, curr_chunk_set)
+
+    curr_chunk_set |= default_words_as_set
+
+    return curr_chunk_set
 
 if __name__ == "__main__":
-    celex_dict, phonix_dict, default_pg_set = load_words.load_my_celex_phonix_data()
 
-    print('Adding [z]>s to the default set as an experiment!')
-    default_pg_set.add((('z',), 's'))
+    # TODO : Potentially make previous set of default pg pairs unavailable in the code (or at least not returned in this call)
+    #  for consistency.
+    celex_dict, raw_phonix_dict, _ = load_words.load_my_celex_phonix_speechblocks_data()
 
-    syllable_dict, non_aligned_words, syllable_parents = alignment.align_celex_syllables(celex_dict, phonix_dict)
+    ## TODO: Why does the default chunk number change with multiple runs?
+    default_chunks = find_chunks(celex_dict, raw_phonix_dict)
 
-    print('Non-nested number of syllables', impact.num_syllables(syllable_dict))
+    print(f'default chunk number {len(default_chunks)}')
 
-    syllable_dict_post_onsets, onset_parents = onsets_and_rimes.postprocess_to_extended_onsets_and_rimes(syllable_dict)
-    syllable_dict_post_strict, cut_parents = strict_decoding.cut_strict_decode(syllable_dict_post_onsets, default_pg_set)
-
-    counts = impact.g2p_to_counts(syllable_dict_post_strict)
-
-    for grapheme, g_collect in syllable_dict_post_strict.items():
-        print(f'Grapheme {grapheme}')
-        for p in g_collect:
-            print(f'\tPhoneme: {p}')
-
-    print('Note: Had added [z]>s to the default set as an experiment!')
-
-    # #Now, revert the chunks to make them stable.
-    # lineage_dicts = [cut_parents, onset_parents, syllable_parents]
-    # parent_dicts = [syllable_dict_post_onsets, syllable_dict, phonix_dict]
-    # print_type = ['cut to onset', 'onset to syll', 'syll to word']
-    #
-    # current_remains = syllable_dict_post_strict
-    # stable_chunks = {}
-    #
-    # for current_parent_dict, current_lineage_dict, current_type in zip(parent_dicts, lineage_dicts, print_type):
-    #     current_stable, current_remains = stabilize_piece_step(current_remains,
-    #                                                            current_parent_dict,
-    #                                                            current_lineage_dict)
-    #
-    #     if current_type != 'syll to word':
-    #         for g, P in current_parent_dict.items():
-    #             # Add the next layer of the hierarchy for processing.
-    #             current_remains[g] |= P
-    #
-    #     stable_chunks.update(current_stable)
-    #     print(f'\tStable chunks from this step: {len(stable_chunks)}')
-    #
-    # stable_counts = impact.g2p_to_counts(stable_chunks)
-    # print('Length of remains should be zero. It is currently:', len(current_remains))
+    terminate_idx = 0
+    for c in default_chunks:
+        terminate_idx += 1
+        if terminate_idx > 5 : break
+        print(f'\t{word_funcs.mapping_to_str(c)}')

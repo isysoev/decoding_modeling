@@ -9,7 +9,7 @@ imports.import_files()
 
 from em import prep_syllablify as prep, syllablify
 from word_tools import word_funcs, identify_pieces
-import load_words
+from syllables import load_words
 from file_gen import data_run_once
 
 from segmentation import process_segs, select_segs, count_segs

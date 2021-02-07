@@ -22,7 +22,8 @@ imports.import_files()
 
 from word_tools import word_funcs
 from decoding import strict_decoding
-import load_words
+from syllables import load_words
+
 
 def test_default_irregular_remainder():
     # 12/22 Text from phonix

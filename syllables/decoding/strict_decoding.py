@@ -1,9 +1,72 @@
-from os.path import join, exists
-from analysis import impact
-from word_tools import word_funcs
+
+from syllables.segmentation import segment
+from syllables.word_tools import identify_pieces
 from collections import defaultdict
 
-def default_irregular_remainder_forward(word_tuple, default_set):
+
+def find_all_pg_pairs(word_dict):
+    """
+    word_dict is the phonix dict, but without the "set" wrapping around each IPA.
+    Note that this will filter out the following:
+        double consonants
+    """
+
+    g2p_pg_pairs = defaultdict(set)
+    pg_counts = defaultdict(int)
+
+    for word, ipa in word_dict.items():
+        for pg in ipa:
+            if identify_pieces.is_double_consonant_pg(pg) or identify_pieces.is_consonant_silent_e(pg):
+                continue
+            pg_as_chunk = (pg,)
+            g2p_pg_pairs[pg[1]].add(pg_as_chunk)
+
+            # Mark the grapheme with its current tuple representation (as a complete chunk, NOT as an individual piece)
+            #     The latter is important for compatibility with later filtering.
+            pg_counts[pg_as_chunk] += 1
+
+    return g2p_pg_pairs, pg_counts
+
+
+def find_default_pg_pairs(word_dict, top_n = None):
+    """
+    word_dict is the phonix dict, but without the "set" wrapping around each IPA.
+    top_n indicates that the top n popular pg pairs should be kept (pure, not word-freq based, frequencies)
+        None indicates that top n should not be active.
+    """
+
+    all_pgs, pgs_count = find_all_pg_pairs(word_dict)
+    popular_pg = filter_popular_chunks(all_pgs, pgs_count, top_n)
+    return popular_pg
+
+def filter_popular_chunks(g2p_dict, p2counts, top_n=None):
+    """
+    Inputs:
+        g2p_dict, a str->Set{word tuple representation} defaultdict of grapheme -> many phonemes.
+        p2counts, a Tuple->int defaultdict of phoneme -> pure word frequencies.
+        top_n, if specified, indicates that the top_n popular chunks should be kept (used in default pg pair finding)
+    Returns a Dict (G->P, or str->word tuple representation),
+        which represents the default (popular) chosen chunk.
+    """
+
+    g2popular_chunks = {}
+    g2popular_counts = {}
+    for g, g_collect in g2p_dict.items():
+        # 2/5: https://stackoverflow.com/questions/5098580/implementing-argmax-in-python
+        max_P = max(g_collect, key= lambda P: p2counts[P])
+        g2popular_chunks[g] = max_P
+        g2popular_counts[g] = p2counts[max_P]
+
+    if not (top_n is None):
+        sorted_popular_chunks = sorted(g2popular_chunks,
+                                       key = lambda P : g2popular_counts[P],
+                                       reverse = True)
+        selected_popular_chunks = sorted_popular_chunks[:min(len(g2popular_chunks), top_n)]
+        g2popular_chunks = { g : g2popular_chunks[g] for g in selected_popular_chunks}
+
+    return g2popular_chunks
+
+def default_pg_decode(word_tuple, default_set):
     """
     Returns the substring that is not decodable via pg pairs.
     """
@@ -15,34 +78,27 @@ def default_irregular_remainder_forward(word_tuple, default_set):
     return ''  # Decodable in its entirety.
 
 
-def cut_strict_decode(old_g2p_dict, default_set, verbose = False):
+def find_irregular_chunks(to_decode_dict, all_chunk_set):
     """
-    This has been adapted from its original version to perform cuts.
+    Returns a g-> set{} Dict of the non-decodable words.
     """
-    print("\nAttempting strict decoding with cuts.")
 
-    new_g2p_dict = defaultdict(set)
-    cut_parents = {}
+    def _can_decode_segmentation(segs_tuple_list):
+        return all(tuple(seg) in all_chunk_set for seg in segs_tuple_list)
 
-    for g, p_set in old_g2p_dict.items():
-        for this_word_tuple in p_set:
-            remains = default_irregular_remainder_forward(this_word_tuple, default_set)
-            remains = default_irregular_remainder_forward(remains[::-1], default_set)[::-1]
+    def _can_decode_word_P(word_tuple):
+        # Segment the word tuple then use set comparison to see if it's decodable.
 
-            if remains:
-                #   Could not fully decode with default pg pairs.
-                cut_grapheme = word_funcs.ipa_to_grapheme_str(remains)
-                new_g2p_dict[cut_grapheme].add(remains)
-                cut_parents[remains] = this_word_tuple #The parent's pronunciation.
-                #   TODO: The parent for now -- in the future, accept highest frequency parent.
+        all_poss_segs = segment.possibleSegmentations(word_tuple, len(word_tuple))
+        return any(_can_decode_segmentation(seg_select) for seg_select in all_poss_segs)
 
-    chunks_orig = impact.num_syllables(old_g2p_dict)
-    chunks_new = impact.num_syllables(new_g2p_dict)
+    new_undecodable_dict = defaultdict(set)
+    cannot_decode_word_P = lambda poss_P : not _can_decode_word_P(poss_P)
 
-    if verbose:
-        print(f'\nPrevious number of chunks: {chunks_orig}')
-        print(f'Current number of chunks: {chunks_new}')
-        print(f'\tDifference: {chunks_orig - chunks_new}')
+    for g, g_collect in to_decode_dict.items():
+        result = set(filter(cannot_decode_word_P, g_collect))
+        if result:
+            new_undecodable_dict[g] |= result
 
-    return new_g2p_dict, cut_parents
+    return new_undecodable_dict
 

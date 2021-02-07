@@ -1,49 +1,29 @@
-import imports
 
-imports.import_files()
-
-from analysis import impact
-from word_tools import word_funcs, identify_pieces
+from syllables.analysis import impact
+from syllables.word_tools import word_funcs, identify_pieces
 
 from collections import defaultdict
 
-def postprocess_to_extended_onsets_and_rimes(old_g2p, verbose = False):
-    """
-    Similiar to generation of initial units for EM syllablification.
-    However, only identifies CVC
-        amongst the old_syllables of the resulting words.
-    words here is a g2p dict (see stability),
-        but is converted to the expected g->p
-    """
+def onsets_and_rimes(old_g2p, verbose = False):
 
-    # Need to process individually
-    #   because dict assumption in prep won't work for collisions.
-
-    onset_parent_dict = {}
-    with_onset_g2p = defaultdict(set)
+    new_g2p = defaultdict(set)
+    onset_rime_counts = defaultdict(int)
 
     for g, g_dict in old_g2p.items():
         for word_tuple in g_dict:
-            onset_result = identify_pieces.find_c_any_v_c_any(word_tuple)
-            if onset_result is None:
-                #   If this P is not broken into onsets and rimes, it is its own parent (the syllable still)
-                onset_parent_dict[word_tuple] = word_tuple
-                with_onset_g2p[g].add(word_tuple)
+            if not identify_pieces.is_cvc(word_tuple):
+                continue
+                # IMPORTANT: Do not store syllables here, because they will be processed at a later in the hierarchy.
+                #   If they were stored here, then all non-CVC syllables would be memorized at this stage,
+                #       resulting in incorrect answers to the new hierarchy design.
             else:
-                onset, rime = onset_result
+                onset, rime = word_tuple[:1], word_tuple[1:]
                 for piece in [onset, rime]:
-                    this_g = word_funcs.ipa_to_grapheme_str(piece)
-                    with_onset_g2p[this_g].add(piece)
-                    onset_parent_dict[piece] = word_tuple
-                    #   TODO: The parent for now -- in the future, accept highest frequency parent.
+                    new_g = word_funcs.ipa_to_grapheme_str(piece)
+                    new_g2p[new_g].add(piece)
+                    onset_rime_counts[piece] += 1
 
     orig_g2p_len = impact.num_syllables(old_g2p)
-    curr_g2p_len = impact.num_syllables(with_onset_g2p)
+    curr_g2p_len = impact.num_syllables(new_g2p)
 
-    if verbose:
-        print(f'Tentative C any V C any analysis (onsets/rimes).')
-        print(f'\tOriginal g2p length: {orig_g2p_len}')
-        print(f'\tCurrent g2p length: {curr_g2p_len}')
-        print(f'\t\tDifference: {orig_g2p_len - curr_g2p_len}')
-
-    return with_onset_g2p, onset_parent_dict
+    return new_g2p, onset_rime_counts

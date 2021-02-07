@@ -3,10 +3,8 @@
 # Refactor this maybe later so that all hierarchy funcs are in the same file,
 #   then move away from the dictionary-oriented processing.
 
-import load_words
 from word_tools import identify_pieces, word_funcs
 from decoding import strict_decoding
-
 
 def process_cut_default_decode(word_tuple, default_set):
 
@@ -19,7 +17,6 @@ def process_cut_default_decode(word_tuple, default_set):
 
     return cut_grapheme, remains
     # The grapheme and its pg pair.
-
 
 def process_double_consonants(word_tuple):
     """

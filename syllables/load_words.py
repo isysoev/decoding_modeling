@@ -1,12 +1,16 @@
-from word_tools import word_funcs
 from os.path import join
 
-def load_my_celex_phonix_data():
+import re
+from syllables.word_tools import word_funcs
+
+def load_my_celex_phonix_speechblocks_data():
 
     """
     Function used for consistent loading across files --
         mostly for my convenience and to prevent me from accidentally loading different files.
     """
+
+    WORDS_PATH = "/Users/nicolewong/Desktop/urop/SpeechBlocks/SpeechBlocks-ImageBank/reference-dictionary.txt"
 
     CELEX_PATH = "/Users/nicolewong/Desktop/urop/celex2/english/eol"
     CELEX_SYLL_PATH = join(CELEX_PATH, 'eol.cd')
@@ -16,10 +20,49 @@ def load_my_celex_phonix_data():
     DEFAULT_P_PATH = join(INPUTS_FOLDER, 'grapheme_defaults.txt')
 
     celex_dict = get_celex_syllables(CELEX_SYLL_PATH)
-    phonix_words, phonix_dict = load_data(PHONIX_PATH)  # Already intersected with 5000 popular words.
+    phonix_dict = load_speechblocks_phonix(WORDS_PATH, PHONIX_PATH)
+
     default_pg_set = create_default_pg_tuples(DEFAULT_P_PATH)
 
     return celex_dict, phonix_dict, default_pg_set
+
+def clean_word_of_numbers(word):
+    """
+    Removes the _number or .number designations of words.
+        Assumes that these two dividers should not appear together.
+    """
+
+    period_idx = word.find('.')
+    underscore_idx = word.find('_')
+
+    if period_idx != -1 and underscore_idx != -1:
+        return word[:min(period_idx, underscore_idx)]
+    if period_idx != -1:
+        return word[:period_idx]
+    if underscore_idx != -1:
+        return word[:underscore_idx]
+
+    return word
+
+
+def process_word_list(word_list):
+
+    all_words = set()
+    for line in word_list:
+        # 2/5 : https://www.geeksforgeeks.org/python-split-multiple-characters-from-string/
+        pieces = re.split(' |,', line.strip())
+        this_words = set(map(clean_word_of_numbers, pieces))
+        all_words |= this_words
+
+    return all_words
+
+def load_words(WORDS_PATH):
+    """
+    Parses the contents of reference-dictionary.txt to extract all SpeechBlocks words.
+    """
+
+    with open(WORDS_PATH, 'r') as f:
+        return process_word_list(f.readlines())
 
 def get_celex_syllables(celex_syllable_path: object) -> object:
 
@@ -33,7 +76,7 @@ def get_celex_syllables(celex_syllable_path: object) -> object:
 
         return syllable_data
 
-def load_data(DATA_PATH, select_popular_num=5000):
+def load_data_popular_n(DATA_PATH, select_popular_num=5000):
     """
     Filter doubles -> whether to replace all double consonants with single consonants.
     """
@@ -41,6 +84,19 @@ def load_data(DATA_PATH, select_popular_num=5000):
     phonix_dict, wordfreqs = _load_raw_data(DATA_PATH)
     word_dict = select_popular_n(phonix_dict, wordfreqs, select_popular_num)
     return word_dict
+
+def load_speechblocks_phonix(WORDS_PATH, DATA_PATH):
+    """
+    Inputs:
+        WORDS_PATH, the filename of the reference-dictionary.txt file of the SpeechBlocks data.
+        DATA_PATH, the folder in which phonix data is stored.
+    """
+
+    phonix_dict, _ = _load_raw_data(DATA_PATH)
+    phonix_words = set(phonix_dict.keys())
+    speechblocks_words = load_words(WORDS_PATH)
+    return { word : phonix_dict[word] for word in speechblocks_words if word in phonix_words}
+    # Above: Prevents cases like alternate spellings of "yogurt" from causing errors.
 
 ########################
 ### PREP SYLLABLIFY ####
@@ -109,5 +165,5 @@ def create_default_lookup(default_p_path):
 
 def create_default_pg_tuples(default_p_path):
     default_pg = create_default_lookup(default_p_path)
-    default_pg_set = set(word_funcs.get_pg_pair("{}>{}".format(p, g)) for g, p in default_pg.items())
+    default_pg_set = set((word_funcs.get_pg_pair("{}>{}".format(p, g)),) for g, p in default_pg.items())
     return default_pg_set

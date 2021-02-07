@@ -63,6 +63,10 @@ def test_align_pg_and_syllables():
 
 def explore_alignment_exceptions():
 
+    """
+    Note: This was on non-intersection with SpeechBlocks, so the list of exceptions needs to be re-generated.
+    """
+
     #   1/24 Some "exception" cases from CELEX/phonix.txt
     #   In order: silent letters, merged r, merged double r
     cases = [
@@ -89,8 +93,8 @@ def explore_alignment_exceptions():
 if __name__ == "__main__":
 
     tests = [
-        #test_align_pg_and_syllables,
-        explore_alignment_exceptions
+        test_align_pg_and_syllables,
+        #explore_alignment_exceptions
     ]
 
     for test in tests:

@@ -8,7 +8,8 @@ imports.import_files()
 
 from segmentation import select_segs, process_segs, count_segs
 
-import load_words
+from syllables import load_words
+
 
 ####################
 ####### MAIN #######

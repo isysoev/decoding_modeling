@@ -1,6 +1,6 @@
 
-from os.path import exists, join
-import load_words
+from os.path import join
+from syllables import load_words
 
 #########################
 ### LOAD NEEDED DATA ####
@@ -32,6 +32,22 @@ def process_dict_double_consonant(word_dict):
 
     return new_word_dict
 
+
+def is_double_consonant_pg(pg):
+    p, g = pg
+    if is_consonant(p):  # Defined as "not a vowel"
+        return len(g) == 2 and g[0] == g[1]
+
+def is_consonant_silent_e(pg):
+    """
+    Defined as a non-vowel pg pair,
+        with e as the final letter in the grapheme,
+            and of length 2
+    """
+    p, g = pg
+    return is_consonant(p) and len(g) == 2 and g[1] == 'e'
+
+
 def find_double_consonant(word_rep):
     """
     Inputs:
@@ -44,10 +60,9 @@ def find_double_consonant(word_rep):
     to_process_idx = []
     for idx, pg in enumerate(word_rep):
         p, g = pg
-        if is_consonant(p): #Defined as "not a vowel"
-            if len(g) == 2 and g[0] == g[1]:
-                # 1/27: Fixed bug here where it was only finding first instance of a double consonant, rather than all.
-                to_process_idx.append(idx)
+        if is_double_consonant_pg(pg):
+            # 1/27: Fixed bug here where it was only finding first instance of a double consonant, rather than all.
+            to_process_idx.append(idx)
 
     return None if not to_process_idx else to_process_idx
 
@@ -86,10 +101,8 @@ def is_vowel(unit):
     global VOWELS
     return (unit in VOWELS)
 
-
 def is_consonant(pg_pair):
     return not is_vowel(pg_pair)
-
 
 def has_vowel(poss_syllable):
     return any(is_vowel(p) for p, _ in poss_syllable)
@@ -105,6 +118,13 @@ def _find_first_vowel(phonemes):
             return idx
     return None #No vowels.
 
+def _find_first_consonant(phonemes):
+
+    for idx, p in enumerate(phonemes):
+        if not is_vowel(p):
+            return idx
+    return None #No consonants
+
 def find_c_any_v_c_any(word_tuple):
 
     """
@@ -113,6 +133,8 @@ def find_c_any_v_c_any(word_tuple):
         and the "rime" is the rest of the word,
             where a vowel and at least one consonant must follow the onset immediately.
     """
+
+    assert False, 'Do not use this, maintaining here for archival purposes. Unsure if good to use linguistically yet'
 
     if len(word_tuple) < 3:
         return None
@@ -126,23 +148,13 @@ def find_c_any_v_c_any(word_tuple):
     consonant_streak = word_tuple[:first_vowel_idx]
     extended_rime = word_tuple[first_vowel_idx:]
 
+    has_consonant_rime = _find_first_consonant(word_tuples_to_phonemes(extended_rime))
+
+    # 2/5: Was not originally checking for this in previous version
+    if not has_consonant_rime: #Don't accept words that have no consonant after the vowel.
+        return None
+
     return consonant_streak, extended_rime
-
-def is_cvc_any(word_tuple):
-    """
-    Allows extended CVC___ breaking, where the CVC can be followed by anything.
-    """
-
-    if len(word_tuple) < 3:
-        return False
-
-    phonemes = word_tuples_to_phonemes(word_tuple)
-
-    if (is_consonant(phonemes[0])
-            and is_vowel(phonemes[1])
-            and is_consonant(phonemes[2])):
-        return True
-    return False
 
 
 def is_cvc(word_tuple):
@@ -178,46 +190,9 @@ def is_vc(word_tuple):
         return True
     return False
 
-
-def is_mono(word_tuple):
-    count_vowels = 0
-
-    for p in word_tuples_to_phonemes(word_tuple):
-        if is_vowel(p):
-            count_vowels += 1
-
-    return count_vowels == 1
-
 #######################
-##### DIRECT FINDS ####
+##### EXTRA FUNCTIONS #
 #######################
-
 
 def word_tuples_to_phonemes(word_tuple):
     return [p for p, _ in word_tuple]
-
-def find_type(words, filter_func):
-    type_words = {word: value
-                  for word, value in words.items()
-                  if filter_func(value)}
-    return type_words
-
-
-def find_cvc_any(words):
-    return find_type(words, is_cvc_any)
-
-
-def find_cvc(words):
-    return find_type(words, is_cvc)
-
-
-def find_vc(words):
-    return find_type(words, is_vc)
-
-
-def find_cv(words):
-    return find_type(words, is_cv)
-
-
-def find_mono(words):
-    return find_type(words, is_mono)
