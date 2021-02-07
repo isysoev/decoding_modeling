@@ -84,7 +84,10 @@ if __name__ == "__main__":
     #  for consistency.
     celex_dict, raw_phonix_dict, _ = load_words.load_my_celex_phonix_speechblocks_data()
 
-    ## TODO: Why does the default chunk number change with multiple runs?
+    ## TODO: Maybe institute some kind of sorted preference/secondary sorting for tie-breaking popularity?
+    ## The non-deterministic behavior is observable after a few runs of the algorithm,
+    # and usually results in a small difference in the number of final chunks.
+
     default_chunks = find_chunks(celex_dict, raw_phonix_dict)
 
     print(f'default chunk number {len(default_chunks)}')

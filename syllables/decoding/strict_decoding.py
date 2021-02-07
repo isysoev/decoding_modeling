@@ -53,13 +53,20 @@ def filter_popular_chunks(g2p_dict, p2counts, top_n=None):
     g2popular_counts = {}
     for g, g_collect in g2p_dict.items():
         # 2/5: https://stackoverflow.com/questions/5098580/implementing-argmax-in-python
-        max_P = max(g_collect, key= lambda P: p2counts[P])
+        # 2/7: https://stackoverflow.com/questions/54300715/python-3-list-sorting-with-a-tie-breaker
+        # 2/7: After running the main algorithm several times, it seems that this solves the non-deterministic behavior.
+        max_P = max(g_collect, key= lambda P: (p2counts[P], P))
+        #    Tiebreaking: Note that for consistency with below, this is reverse alphabetical order!
+        #    This is just for deterministic behavior of tie-breaking.
         g2popular_chunks[g] = max_P
         g2popular_counts[g] = p2counts[max_P]
 
     if not (top_n is None):
         sorted_popular_chunks = sorted(g2popular_chunks,
-                                       key = lambda P : g2popular_counts[P],
+                                       # 2/7: https://stackoverflow.com/questions/54300715/python-3-list-sorting-with-a-tie-breaker
+                                       key = lambda P : (g2popular_counts[P], P), # Sort on counts, the alphabetical order.
+                                       #    Note that for consistency with below, this is reverse alphabetical order!
+                                       #    This is just for deterministic behavior of tie-breaking.
                                        reverse = True)
         selected_popular_chunks = sorted_popular_chunks[:min(len(g2popular_chunks), top_n)]
         g2popular_chunks = { g : g2popular_chunks[g] for g in selected_popular_chunks}

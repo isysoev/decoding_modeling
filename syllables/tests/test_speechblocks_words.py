@@ -92,22 +92,6 @@ def test_find_irregular_chunks():
     default_pg_set = load_words.create_default_pg_tuples(DEFAULT_P_PATH)
     assert expected == actual
 
-    ## Testing with default pg pairs.
-
-    pg_input = {
-        'gskoa' : {word_funcs.get_mapping('g>g|s>s|k>k|oʊ>oa')},
-        'gskob': {word_funcs.get_mapping('g>g|s>s|k>k|oʊ>ob')}
-    }
-
-    #TODO: Update this for the new default pg pairs
-
-    expected_decode_on_pg = defaultdict(set)
-    expected_decode_on_pg['gskob'] = pg_input['gskob']
-
-    decode_on_pg = strict_decoding.find_irregular_chunks(pg_input, default_pg_set)
-
-    assert decode_on_pg == expected_decode_on_pg
-
 def test_find_default_pg_pairs():
 
     # 2/7: Inputs modified from phonix.
