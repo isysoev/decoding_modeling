@@ -1,8 +1,17 @@
+
 from collections import defaultdict
-from syllables import word_tools
-#from word_tools import load_words
+from chunks import load_words
 
 if __name__ == "__main__":
+
+    """
+    Initial code for aligning IPA
+        in CMU multiple pronunciation dictionary
+            and the phonix file.
+    This is INCOMPLETE, but could be useful for starting.
+        Please note that because it was incomplete, it is not necessarily to be considered final code!
+    """
+
     CMU_PATH = "/Users/nicolewong/Desktop/urop/Inputs/cmudict-ipa.txt"
 
     ipa_dict = defaultdict(list)
