@@ -18,8 +18,8 @@ To find the chunks in the text files given,
         the output of Ivan's function get_mapping,
           which is stored in word_tools -> word_funcs (in my version of the code).
           
-        (Please note that "word tuples" don't actually always refer to entire words.
-          "Word tuple" could be more accurately described as "chunk tuple" -- it just refers to the tuple, rather than string format.)
+       Please note that "word tuples" don't actually always refer to entire words.
+       "Word tuple" could be more accurately described as "chunk tuple" -- it just refers to the tuple, rather than string format.
           
   - *g2p*:
     a Dict of String -> Sets of Tuples
