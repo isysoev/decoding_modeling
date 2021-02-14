@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Dec 13 18:54:56 2020
-
-@author: nicolewong
-"""
 
 ## All functions below 12/13: From Ivan's Segment-TOWRE.ipynb code.
 

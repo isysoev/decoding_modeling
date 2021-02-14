@@ -1,4 +1,5 @@
-from word_tools import word_funcs
+from syllables.word_tools import word_funcs
+
 from os.path import join
 
 def load_data(DATA_PATH, select_popular_num=5000):
@@ -28,9 +29,9 @@ def load_vowel_P(load_path):
 def _load_raw_data(DATA_PATH):
     # 12/12: Code below taken/adapted from Ivan's code.
 
-    phonix = word_funcs.read_phonix(join(DATA_PATH, join('full_data', 'phonix.txt')))
+    phonix = word_funcs.read_phonix(join(DATA_PATH, 'phonix.txt'))
     phonix_dict = dict(phonix)
-    wordfreqs = word_funcs.read_freq_list(join(DATA_PATH, join('full_data', 'word-freqs.txt')))
+    wordfreqs = word_funcs.read_freq_list(join(DATA_PATH, 'word-freqs.txt'))
 
     return phonix_dict, wordfreqs
 

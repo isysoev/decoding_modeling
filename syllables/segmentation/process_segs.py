@@ -1,8 +1,16 @@
-import imports
-imports.import_files()
 
-from word_tools import identify_pieces, word_funcs
-import segment
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
+
+import sys
+
+code_path = '../../decoding_modeling'
+sys.path.insert(1, code_path)
+
+from syllables.word_tools import identify_pieces, word_funcs
+from syllables.segmentation import segment
 
 def valid_seg(seg):
     """

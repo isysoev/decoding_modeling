@@ -1,5 +1,15 @@
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
+
+import sys
+
+code_path = '../../decoding_modeling'
+sys.path.insert(1, code_path)
+
 from collections import defaultdict
-import word_funcs
+from syllables.word_tools import word_funcs
 import functools
 
 #####################

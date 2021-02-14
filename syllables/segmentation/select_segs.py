@@ -1,5 +1,16 @@
-import count_segs
-from word_tools import word_funcs
+
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
+
+import sys
+
+code_path = '../../decoding_modeling'
+sys.path.insert(1, code_path)
+
+from syllables.segmentation import count_segs
+from syllables.word_tools import word_funcs
 
 def select_max_probs(word_dict, unit2counts, valid_segs, scoring=False, debugging=False):
     # 12/16: https://stackoverflow.com/questions/30356892/defaultdict-with-default-value-1

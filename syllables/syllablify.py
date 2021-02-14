@@ -1,14 +1,21 @@
 
-import prep_syllablify as prep
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
+
+import sys
+
+code_path = '../../decoding_modeling'
+sys.path.insert(1, code_path)
+
+from syllables import prep_syllablify as prep
 import os
 from os.path import join, exists
 
-import imports
-imports.import_files()
+from syllables.segmentation import select_segs, process_segs, count_segs
 
-from segmentation import select_segs, process_segs, count_segs
-
-import load_words
+from syllables import load_words
 
 ####################
 ####### MAIN #######
@@ -56,13 +63,13 @@ def gen_syllable_divisions(word_order, word_dict,
 
 if __name__ == '__main__':
 
-    DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
+    DATA_FOLDER = '../files'
 
     popular_words_order, word_dict = load_words.load_data(DATA_FOLDER)
     save_split_path = join(DATA_FOLDER, 'old_syllables')
 
     algorithm_type = 'em'
-    save_split_path = join(save_split_path, join(algorithm_type, 'popular_split_em_1_onset_tentative_refactored.txt'))
+    save_split_path = join(save_split_path, join(algorithm_type, 'popular_split_em_tentative_refactored.txt'))
 
     this_dir = os.path.dirname(save_split_path)
     if not exists(this_dir):

@@ -1,9 +1,6 @@
 ########### Need to try to refactor this code to NOT do pooling!
 
-import imports
-imports.import_files()
-
-from word_tools import word_funcs, identify_pieces
+from syllables.word_tools import word_funcs, identify_pieces
 from collections import defaultdict
 
 def update_grapheme_to_count(word_rep, g2counts):

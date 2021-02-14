@@ -3,7 +3,7 @@
 
 import os
 from os.path import join, exists
-import load_words
+from syllables import load_words
 
 ########################
 ##### GENERATE P #######
@@ -30,7 +30,7 @@ def save_all_p_types(load_path, save_path=''):
     Also will save it to save_path, if specified.
     """
 
-    phonix_path = join(load_path, join('full_data', 'phonix.txt'))
+    phonix_path = join(load_path, 'phonix.txt')
 
     with open(phonix_path, 'r') as f:
         all_pg_pairs = identify_p_types(f.readlines())

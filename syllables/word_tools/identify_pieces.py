@@ -1,38 +1,29 @@
 
-from os.path import exists, join
-import load_words
+
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
+
+import sys
+
+code_path = '../../decoding_modeling'
+sys.path.insert(1, code_path)
+
+from os.path import join
+from syllables import load_words
 
 #########################
 ### LOAD NEEDED DATA ####
 #########################
 
-DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
-syllable_path = join(DATA_FOLDER, 'syllables')
-VOWELS = load_words.load_vowel_P(syllable_path)
+
+#TODO: You will need to change this line to match your file organization.
+VOWELS = load_words.load_vowel_P('/Users/nicolewong/Desktop/urop/decoding_modeling/files')
 
 #########################
 ### VOWEL/CONSONANT #####
 #########################
-
-
-def approx_monosyllabic(word_csv):
-    """
-    Output: dict, str (word) to List with tuple (g,p) for all pg pairs.
-    """
-    # Until the proper syllable algorithm is written
-    #   with modifications,
-    # I use a syllablification algorithm with some unwanted behaviors
-    # relative to this application, like splitting consonants.
-
-    word_list = word_csv['Word']
-    P_list = word_csv['P']
-
-    syllables = SyllableTokenizer()
-    mono_words = {word: split_ipa_rep(ipa) for word, ipa
-                  in zip(word_list, P_list)
-                  if len(syllables.tokenize(word)) == 1}
-
-    return mono_words
 
 def is_vowel(unit):
     assert isinstance(unit, tuple), \
@@ -149,7 +140,6 @@ def find_vc(words):
 
 def find_cv(words):
     return find_type(words, is_cv)
-
 
 def find_mono(words):
     return find_type(words, is_mono)

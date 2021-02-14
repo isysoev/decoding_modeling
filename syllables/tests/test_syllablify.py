@@ -1,20 +1,22 @@
 
-# Please see citations in imports.py file
+# 11/8: managing the imports
+# https://stackoverflow.com/questions/4383571/importing-files-from-different-folder
+# 11/8: For directory help:
+# https://superuser.com/questions/717105/how-to-show-full-path-of-a-file-including-the-full-filename-in-mac-osx-terminal/1533160
+
 import sys
 
-code_path = '/Users/nicolewong/Desktop/urop/code/syllables'
+import os
+code_path = '../..'
 sys.path.insert(1, code_path)
 
-import imports
-imports.import_files()
+from syllables import prep_syllablify as prep
+from syllables import syllablify
+from syllables.word_tools import word_funcs, identify_pieces
+from syllables import load_words
+from syllables.file_gen import data_run_once
 
-import prep_syllablify as prep
-import syllablify
-from word_tools import word_funcs, identify_pieces
-import load_words
-from file_gen import data_run_once
-
-from segmentation import process_segs, select_segs, count_segs
+from syllables.segmentation import process_segs, select_segs, count_segs
 
 from os.path import join
 
@@ -57,9 +59,8 @@ def post_test_compare():
     For ensuring that refactored and regenerated all phoneme text file
         matches the phonemes in the union of the vowels and consonants.
     """
-
-    DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
-    save_split_path = join(DATA_FOLDER, 'syllables')
+    save_split_path = '../../files'
+    print(os.path.abspath(save_split_path))
 
     vowel_path = join(save_split_path, 'all_P_vowels.txt')
     consonant_path = join(save_split_path, 'all_P_pure_consonants.txt')
@@ -312,6 +313,8 @@ def test_mult_iterations():
     Note: This has to be updated for onsets and rimes behavior, but it worked on normal EM algorithm.
     """
 
+    assert False, 'This test must be updated to consider onsets and rimes/the current code structure..'
+
     # 12/19: Phonix text throughout case.
     word_data = {
         'lyon': 'l>l|i>y|oʊ>o|n>n',
@@ -404,7 +407,7 @@ def test_mult_iterations():
 
         assert syllables == asserts_values[2]['old_syllables']
 
-DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
+DATA_FOLDER = '../../files'
 _, word_dict = load_words.load_data(DATA_FOLDER)
 
 if __name__ == '__main__':
@@ -418,7 +421,7 @@ if __name__ == '__main__':
         test_gen_unit_counts,
         test_select_max_probs,
         test_calc_piece_freq,
-        # test_mult_iterations, #This will definitely broken by the onset and rime function.
+        #test_mult_iterations, #This will probably be broken by the onset and rime function.
     ]
 
     for test in tests:

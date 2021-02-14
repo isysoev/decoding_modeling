@@ -5,6 +5,8 @@
 #### from Ivan's code ####
 ##########################
 
+from collections import defaultdict
+
 import codecs
 
 def get_basic_phoneme(phoneme):
