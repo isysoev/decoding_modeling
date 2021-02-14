@@ -12,3 +12,5 @@ If you want to use this branch, please note that the iterative test was disabled
 If I recall correctly, this code uses CVC_any pattern in the onset/rime breaking for the EM iterations, which is defined as any piece with a prefix of CVC, followed by anything.
 
 There is a TODO marked, noting strange behavior if one sets the parameter to generating all possible segmentations as 0, if I remember correctly. I think it accompanies the assert that shortly follows. That may have to be investigated in the future if this code is to be reused elsewhere.
+
+Finally, Ivan previously brought up a concern about the word "even" being broken down in an unexpected way. I am not sure if this is a bug, but I recall having a conceptual reason as to why the behavior of the algorithm on "even" was not necessarily unexpected. However, I don't remember the precise details, so this may also be something to investigate if this EM code is to be used elsewhere.
