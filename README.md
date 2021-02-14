@@ -3,6 +3,9 @@ Modeling children's decoding skill using probabilistic programming
 
 ----
 
+## Note, you will have to change the CELEX path and the SpeechBlocks path to run this code. ##
+I did not want to release this data publicly.
+
 Notes on Nicole's code:
 
 To find the chunks in the text files given,
