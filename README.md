@@ -4,8 +4,12 @@ Modeling children's decoding skill using probabilistic programming
 
 ----
 
-## Note, you will have to change the CELEX path and the SpeechBlocks path to run this code. ##
+## Notes and concerns
+
+You will have to change the CELEX path and the SpeechBlocks path to run this code.
 I did not want to release this data publicly.
+
+Also, the vowel and consonants were derived from the word-freqs/phonix intersection, if I remember correctly, whereas the analysis in this branch is done on CELEX/Speechblocks/phonix. It's unlikely that this will affect results, but this is a discontinuity.
 
 Notes on Nicole's code:
 
