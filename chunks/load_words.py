@@ -19,12 +19,22 @@ def load_my_celex_phonix_speechblocks_data():
     """
 
     # Data from the DropBox of SpeechBlocks
+
+
+    ##############################
+    ### CHANGE ME FOR NEW USER ###
+    ##############################
     WORDS_PATH = "/Users/nicolewong/Desktop/urop/SpeechBlocks/SpeechBlocks-ImageBank/reference-dictionary.txt"
+    CELEX_PATH = "/Users/nicolewong/Desktop/urop/celex2/english/eol"
+
+    ##############################
+    ######## END PATH CHANGES ####
+    ##############################
 
     # Data from CELEX
-    CELEX_PATH = "/Users/nicolewong/Desktop/urop/celex2/english/eol"
+
     CELEX_SYLL_PATH = join(CELEX_PATH, 'eol.cd')
-    PHONIX_PATH = "/Users/nicolewong/Desktop/urop/code/chunks/files"
+    PHONIX_PATH = "../files"
 
     celex_dict = get_celex_syllables(CELEX_SYLL_PATH)
     phonix_dict = load_speechblocks_phonix(WORDS_PATH, PHONIX_PATH)

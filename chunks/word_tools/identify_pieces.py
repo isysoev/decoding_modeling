@@ -6,9 +6,7 @@ from chunks import load_words
 ### LOAD NEEDED DATA ####
 #########################
 
-DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
-syllable_path = join(DATA_FOLDER, 'syllables')
-VOWELS = load_words.load_vowel_P(syllable_path)
+VOWELS = load_words.load_vowel_P('../files')
 
 #########################
 ### VOWEL/CONSONANT #####

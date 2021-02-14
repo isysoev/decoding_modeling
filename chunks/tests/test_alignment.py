@@ -6,7 +6,7 @@
 
 import sys
 
-code_path = '/Users/nicolewong/Desktop/urop/code/'
+code_path = '../..'
 sys.path.insert(1, code_path)
 
 from chunks.word_tools import alignment, identify_pieces

@@ -6,7 +6,7 @@
 
 import sys
 
-code_path = '/Users/nicolewong/Desktop/urop/code'
+code_path = '../..'
 sys.path.insert(1, code_path)
 
 """
@@ -124,7 +124,7 @@ def test_identify_units():
         assert expected_set == this_result, 'Failure in identify units tests.'
 
 
-DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
+DATA_FOLDER = '../files'
 word_dict = load_words._load_raw_phonix(DATA_FOLDER)
 
 if __name__ == '__main__':

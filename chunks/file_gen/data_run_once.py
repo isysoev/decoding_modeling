@@ -6,10 +6,13 @@ Note that this is the restructured file used to ensure correctness,
     that is, the sourced divided into "vowel-like" vs. "consonant-like" pg pairs.
         However, if I remember correctly, they were checked to result in same behavior.
 """
+import sys
+sys.path.insert(0, '../..')
 
 import os
 from os.path import join, exists
-from chunks import load_words
+
+from chunks.file_gen import freq_intersection
 
 ########################
 ##### GENERATE P #######
@@ -54,7 +57,7 @@ def save_all_p_types(load_path, save_path=''):
         Also will save it to save_path, if specified.
     """
 
-    phonix_path = join(load_path, join('full_data', 'phonix.txt'))
+    phonix_path = join(load_path, 'phonix.txt')
 
     with open(phonix_path, 'r') as f:
         all_phonemes = identify_p_types(f.readlines())
@@ -66,11 +69,7 @@ def save_all_p_types(load_path, save_path=''):
 
 if __name__ == '__main__':
 
-    DATA_FOLDER = '/Users/nicolewong/Desktop/urop/Data'
-    popular_words_order, word_dict = load_words.load_data(DATA_FOLDER)
+    DATA_FOLDER = '../files'
+    popular_words_order, word_dict = freq_intersection.load_data(DATA_FOLDER)
 
-    syllable_path = join(DATA_FOLDER, 'old_syllables')
-    if not exists(syllable_path):
-        os.makedirs(syllable_path)
-
-    all_P_path = join(syllable_path, 'all_P_check.txt')
+    all_P_path = join('../files/all_P_check.txt')
