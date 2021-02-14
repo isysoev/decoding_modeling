@@ -16,6 +16,15 @@ import functools
 ##### COUNTS ########
 
 def segmentations_to_counts(segmentations, unit2counts):
+    """
+    Updates segmentation counts.
+    Inputs:
+        segmentations, a collection of segmentations,
+        unit2counts, a defaultdict counting of the pseudocounts of segmentation pieces in the last iteration
+            str -> Integer
+    Outputs:
+        seg_probs, a defaultdict with the scores of segmentations for this iteration.
+    """
     # 12/16: https://stackoverflow.com/questions/30356892/defaultdict-with-default-value-1
     seg_probs = defaultdict(lambda: 0.5)
 
@@ -32,8 +41,11 @@ def segmentations_to_counts(segmentations, unit2counts):
 
 def calc_piece_freqs(proposed_seg_dict):
     """
-    Accepts output of select_max_probs,
-        returns an updated counts of old_syllables
+    Inputs:
+        proposed_seg_dict, output of select_max_probs,
+    Outputs:
+        new_counts: defaultdict, updated pseudocounts of old_syllables
+            str -> pooled counts of the given grapheme, a pseudocount (float).
     """
 
     segmentations = proposed_seg_dict.values()

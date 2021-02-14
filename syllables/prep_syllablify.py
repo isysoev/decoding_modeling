@@ -5,7 +5,13 @@ from collections import defaultdict
 
 def update_grapheme_to_count(word_rep, g2counts):
     """
-    Returns for clarity, but actually mutates cvc_words
+    Updates the various counts for the suggested word piece.
+    Inputs:
+        word_rep, the IPA form of a word
+        g2counts, the grapheme -> dict (tuple form of piece -> Integer)
+            nested storage of different pronunciations' counts
+
+    NOTE: Returns for clarity, but actually mutates cvc_words
     """
 
     grapheme = ''.join(pair[1] for pair in word_rep)
@@ -25,9 +31,14 @@ def update_grapheme_to_count(word_rep, g2counts):
 
 def pool_and_distr_counts(g2counts):
     """
-    g2counts is a nested Dict:
-        G (str) -> dict,
-            {word_tuple -> count of this g->p mapping.}
+    Inputs:
+        g2counts is a nested Dict:
+            G (str) -> dict,
+                {word_tuple -> count of this g->p mapping.}
+    Outputs:
+        pseudocounts is a defaultdict,
+            Key: the string form of a grapheme-phoneme representation (mapping_to_str)
+            Value: the pooled pseudocount across the grapheme (float)
     """
 
     pooled_counts = {}
@@ -49,7 +60,13 @@ def pool_and_distr_counts(g2counts):
 
 def gen_unit_counts(words):
     """
-    Generates pseudocounts for all of the units to use in syllable divisions.
+    Generates pseudocounts for all of the initial units to use in syllable divisions.
+    Inputs:
+        words, a Dict of the format str (word) -> Tuple (word representation)
+    Outputs:
+        pseudocounts is a defaultdict,
+            Key: the string form of a grapheme-phoneme representation (mapping_to_str)
+            Value: the pooled pseudocount across the grapheme (float)
     """
 
     g2counts = {}

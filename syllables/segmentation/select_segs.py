@@ -13,6 +13,14 @@ from syllables.segmentation import count_segs
 from syllables.word_tools import word_funcs
 
 def select_max_probs(word_dict, unit2counts, valid_segs, scoring=False, debugging=False):
+
+    """
+    Selects the segmentations with the maximum probabilities to be used in the next iteration.
+    Inputs:
+        word_dict, str -> word tuple form for the words of the corpus (phonix)
+        unit2counts, the pseudocounts for the segmentation pieces (str -> Integer)
+        valid_segs, a Dictionary of str (word) -> collection of valid segmentations of the word.
+    """
     # 12/16: https://stackoverflow.com/questions/30356892/defaultdict-with-default-value-1
 
     syllablify = {};
