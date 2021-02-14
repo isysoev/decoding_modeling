@@ -11,7 +11,7 @@ I did not want to release this data publicly.
 
 Also, the vowel and consonants were derived from the word-freqs/phonix intersection, if I remember correctly, whereas the analysis in this branch is done on CELEX/Speechblocks/phonix. It's unlikely that this will affect results, but this is a discontinuity.
 
-Notes on Nicole's code:
+## Terminology and notes on mistakes to avoid
 
 To find the chunks in the text files given,
   use hierarchy.py, in the "chunks/main" folder.
